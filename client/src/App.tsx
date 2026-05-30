@@ -1109,7 +1109,7 @@ function Admin() {
 }
 
 function DynamicField({ field, value, onChange }: { field: FormField; value: unknown; onChange: (value: unknown) => void }) {
-  if (field.fieldType === "select") {
+  if (field.fieldType === "select" || (Array.isArray(field.options) && field.options.length > 0)) {
     return (
       <label>{field.label}
         <select value={String(value ?? "")} required={field.required} onChange={(event) => onChange(event.target.value)}>
