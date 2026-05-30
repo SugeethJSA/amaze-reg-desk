@@ -14,6 +14,10 @@ const AttendeeSchema = z.object({
   department: z.string().optional().nullable(),
   externalRef: z.string().optional().nullable(),
   customFields: z.record(z.unknown()).default({})
+    .refine(
+      (record) => !Object.keys(record).some((key) => ["__proto__", "constructor", "prototype"].includes(key)),
+      "Custom field keys must not contain prototype keys"
+    )
 });
 
 attendeesRouter.get("/", requireAuth, async (req, res, next) => {

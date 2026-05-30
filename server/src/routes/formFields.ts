@@ -6,7 +6,8 @@ import { requireAdmin, requireAuth } from "../middleware/auth.js";
 export const formFieldsRouter = Router();
 
 const FieldSchema = z.object({
-  fieldKey: z.string().min(1).regex(/^[a-z][a-z0-9_]*$/, "Use lowercase letters, numbers, and underscores. Start with a letter."),
+  fieldKey: z.string().min(1).regex(/^[a-z][a-z0-9_]*$/, "Use lowercase letters, numbers, and underscores. Start with a letter.")
+    .refine((val) => !["__proto__", "constructor", "prototype"].includes(val), "Forbid prototype keys"),
   label: z.string().min(1),
   fieldType: z.enum(["text", "email", "phone", "number", "select", "textarea", "checkbox"]),
   required: z.boolean().default(false),
