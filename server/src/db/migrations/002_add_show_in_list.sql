@@ -1,1 +1,1 @@
-ALTER TABLE registration_form_fields ADD COLUMN IF NOT EXISTS show_in_list BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE registration_form_fields ADD COLUMN IF NOT EXISTS show_in_list BOOLEAN DEFAULT TRUE;

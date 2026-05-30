@@ -31,7 +31,7 @@ categoriesRouter.get("/", requireAuth, async (_req, res, next) => {
               name,
               description,
               color,
-              station_permissions AS "stationPermissions",
+              station_permissions::text[] AS "stationPermissions",
               capabilities,
               active,
               created_at AS "createdAt",

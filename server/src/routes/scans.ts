@@ -60,6 +60,21 @@ scansRouter.post("/sync", requireAuth, async (req, res, next) => {
           continue;
         }
 
+        if (scan.station === "kit") {
+          const limitRes = await client.query("SELECT setting_value FROM system_settings WHERE setting_key = 'kit_limit'");
+          if (limitRes.rows[0]) {
+            const limit = parseInt(limitRes.rows[0].setting_value, 10);
+            if (!isNaN(limit)) {
+              const countRes = await client.query("SELECT count(*) FROM scan_events WHERE station = 'kit' AND status = 'accepted'");
+              const count = parseInt(countRes.rows[0].count, 10);
+              if (count >= limit) {
+                synced.push({ localScanId: scan.localScanId, status: "denied", reason: "Kit inventory exhausted." });
+                continue;
+              }
+            }
+          }
+        }
+
         const rule = await resolveActiveRule(client, scan.station, scan.ruleId);
         const decision = evaluateRule(rule, scan.station);
         let status = decision.allowed ? "accepted" : "denied";

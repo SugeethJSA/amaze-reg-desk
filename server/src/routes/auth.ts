@@ -72,7 +72,7 @@ authRouter.get("/users", requireAuth, requireAdmin, async (_req, res, next) => {
               u.category_id AS "categoryId",
               uc.name AS "categoryName",
               uc.color AS "categoryColor",
-              COALESCE(v.station_permissions, ARRAY[]::station_type[]) AS stations,
+              COALESCE(v.station_permissions, ARRAY[]::station_type[])::text[] AS stations,
               u.created_at AS "createdAt"
          FROM users u
          LEFT JOIN LATERAL (

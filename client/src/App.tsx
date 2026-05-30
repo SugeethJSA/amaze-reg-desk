@@ -680,7 +680,7 @@ function Admin() {
       password: "",
       role: user.role,
       active: user.active,
-      stations: user.stations.join(","),
+      stations: parseStations(user.stations).join(","),
       categoryId: user.categoryId ?? ""
     });
   }
@@ -742,7 +742,7 @@ function Admin() {
       description: category.description,
       color: category.color,
       active: category.active,
-      stationPermissions: category.stationPermissions.join(","),
+      stationPermissions: parseStations(category.stationPermissions).join(","),
       capabilities: category.capabilities
     });
   }
@@ -782,6 +782,15 @@ function Admin() {
       }
     }));
   }
+
+  const parseStations = (stations: any): string[] => {
+    if (Array.isArray(stations)) return stations.length ? stations : ["admin"];
+    if (typeof stations === "string") {
+      const cleaned = stations.replace(/[{}]/g, "");
+      return cleaned ? cleaned.split(",") : ["admin"];
+    }
+    return ["admin"];
+  };
 
   return (
     <section className="admin-workspace">
@@ -1004,7 +1013,7 @@ function Admin() {
                         </div>
                         <span style={{ marginTop: '4px' }}>{category.description || "No description"}</span>
                         <div className="scope-row" style={{ marginTop: '8px' }}>
-                          {category.stationPermissions.length > 0 ? category.stationPermissions.map((scope) => <small key={scope}>{scope}</small>) : <small>No stations</small>}
+                          {parseStations(category.stationPermissions).length > 0 ? parseStations(category.stationPermissions).map((scope) => <small key={scope}>{scope}</small>) : <small>No stations</small>}
                           {Object.entries(category.capabilities).filter(([, v]) => v).map(([k]) => <small key={k} style={{ background: '#fef3c7', color: '#d97706' }}>{k}</small>)}
                         </div>
                       </div>
@@ -1077,7 +1086,7 @@ function Admin() {
                             </span>
                           )}
                         </span>
-                        <div className="scope-row">{(user.stations.length ? user.stations : ["admin"]).map((scope) => <small key={scope}>{scope}</small>)}</div>
+                        <div className="scope-row">{parseStations(user.stations).map((scope) => <small key={scope}>{scope}</small>)}</div>
                       </div>
                       <div className="row">
                         <button className="secondary" onClick={() => editUser(user)}><Edit3 size={16} /> Edit</button>

@@ -21,8 +21,15 @@ app.get("/health", (_req, res) => {
   res.json({ ok: true, service: "amaze-reg-desk-api" });
 });
 
+app.get("/api/version", (_req, res) => {
+  res.json({ version: "1.1.0" });
+});
+
+import { settingsRouter } from "./routes/settings.js";
+
 app.use("/api/auth", authRouter);
 app.use("/api/categories", categoriesRouter);
+app.use("/api/settings", settingsRouter);
 app.use("/api/attendees", attendeesRouter);
 app.use("/api/form-fields", formFieldsRouter);
 app.use("/api/imports", importsRouter);

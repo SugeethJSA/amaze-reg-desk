@@ -14,7 +14,8 @@ const FieldSchema = z.object({
   options: z.array(z.string().min(1)).default([]),
   sortOrder: z.coerce.number().int().default(0),
   active: z.boolean().default(true),
-  showInList: z.boolean().default(false)
+  showInList: z.boolean().default(false),
+  isSystem: z.boolean().default(false)
 });
 
 // Public endpoint — no auth required — used by PublicRegister & PublicTransfer pages
@@ -29,7 +30,8 @@ formFieldsRouter.get("/public", async (_req, res, next) => {
               options,
               sort_order AS "sortOrder",
               active,
-              show_in_list AS "showInList"
+              show_in_list AS "showInList",
+              is_system AS "isSystem"
          FROM registration_form_fields
         WHERE active = TRUE
         ORDER BY sort_order ASC, label ASC`
@@ -52,6 +54,7 @@ formFieldsRouter.get("/", requireAuth, async (_req, res, next) => {
               sort_order AS "sortOrder",
               active,
               show_in_list AS "showInList",
+              is_system AS "isSystem",
               created_at AS "createdAt",
               updated_at AS "updatedAt"
          FROM registration_form_fields
@@ -68,8 +71,8 @@ formFieldsRouter.post("/", requireAuth, requireAdmin, async (req, res, next) => 
     const input = FieldSchema.parse(req.body);
     const result = await pool.query(
       `INSERT INTO registration_form_fields
-         (field_key, label, field_type, required, options, sort_order, active, show_in_list)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         (field_key, label, field_type, required, options, sort_order, active, show_in_list, is_system)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING id,
                  field_key AS "fieldKey",
                  label,
@@ -78,8 +81,9 @@ formFieldsRouter.post("/", requireAuth, requireAdmin, async (req, res, next) => 
                  options,
                  sort_order AS "sortOrder",
                  active,
-                 show_in_list AS "showInList"`,
-      [input.fieldKey, input.label, input.fieldType, input.required, JSON.stringify(input.options), input.sortOrder, input.active, input.showInList]
+                 show_in_list AS "showInList",
+                 is_system AS "isSystem"`,
+      [input.fieldKey, input.label, input.fieldType, input.required, JSON.stringify(input.options), input.sortOrder, input.active, input.showInList, false]
     );
     res.status(201).json({ field: result.rows[0] });
   } catch (error) {
@@ -90,11 +94,17 @@ formFieldsRouter.post("/", requireAuth, requireAdmin, async (req, res, next) => 
 formFieldsRouter.put("/:id", requireAuth, requireAdmin, async (req, res, next) => {
   try {
     const input = FieldSchema.parse(req.body);
+    const existingResult = await pool.query("SELECT is_system FROM registration_form_fields WHERE id = $1", [req.params.id]);
+    if (!existingResult.rows[0]) {
+      return res.status(404).json({ error: "not_found", message: "Form field not found." });
+    }
+    const isSystem = existingResult.rows[0].is_system;
+    
     const result = await pool.query(
       `UPDATE registration_form_fields
-          SET field_key = $2,
+          SET field_key = CASE WHEN is_system THEN field_key ELSE $2 END,
+              field_type = CASE WHEN is_system THEN field_type ELSE $4 END,
               label = $3,
-              field_type = $4,
               required = $5,
               options = $6,
               sort_order = $7,
@@ -110,12 +120,10 @@ formFieldsRouter.put("/:id", requireAuth, requireAdmin, async (req, res, next) =
                   options,
                   sort_order AS "sortOrder",
                   active,
-                  show_in_list AS "showInList"`,
+                  show_in_list AS "showInList",
+                  is_system AS "isSystem"`,
       [req.params.id, input.fieldKey, input.label, input.fieldType, input.required, JSON.stringify(input.options), input.sortOrder, input.active, input.showInList]
     );
-    if (!result.rows[0]) {
-      return res.status(404).json({ error: "not_found", message: "Form field not found." });
-    }
     return res.json({ field: result.rows[0] });
   } catch (error) {
     return next(error);
@@ -124,10 +132,14 @@ formFieldsRouter.put("/:id", requireAuth, requireAdmin, async (req, res, next) =
 
 formFieldsRouter.delete("/:id", requireAuth, requireAdmin, async (req, res, next) => {
   try {
-    const result = await pool.query("DELETE FROM registration_form_fields WHERE id = $1 RETURNING id", [req.params.id]);
-    if (!result.rows[0]) {
+    const check = await pool.query("SELECT is_system FROM registration_form_fields WHERE id = $1", [req.params.id]);
+    if (!check.rows[0]) {
       return res.status(404).json({ error: "not_found", message: "Form field not found." });
     }
+    if (check.rows[0].is_system) {
+      return res.status(400).json({ error: "system_field", message: "System fields cannot be deleted." });
+    }
+    await pool.query("DELETE FROM registration_form_fields WHERE id = $1", [req.params.id]);
     return res.status(204).send();
   } catch (error) {
     return next(error);

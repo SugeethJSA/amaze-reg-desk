@@ -469,6 +469,7 @@ tbody tr:hover {
   padding: 24px;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
   display: grid;
+  align-content: start;
   gap: 20px;
   transition: box-shadow 0.2s ease;
 }
@@ -1307,6 +1308,11 @@ tbody tr:hover {
   transition: all 0.2s ease;
 }
 
+.field-item .row {
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
 .field-item:hover {
   background: white;
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
@@ -1367,6 +1373,11 @@ tbody tr:hover {
   border-radius: 14px;
   padding: 16px 20px;
   transition: all 0.2s ease;
+}
+
+.user-item .row {
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .user-item:hover {

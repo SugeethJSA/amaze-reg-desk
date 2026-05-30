@@ -3,6 +3,7 @@ import { z } from "zod";
 import { pool, withTransaction } from "../db/pool.js";
 import { requireAdmin, requireAuth } from "../middleware/auth.js";
 import { encryptQrPayload } from "../services/crypto.js";
+import xlsx from "xlsx";
 
 export const attendeesRouter = Router();
 
@@ -41,6 +42,53 @@ attendeesRouter.get("/", requireAuth, async (req, res, next) => {
       [q]
     );
     res.json({ attendees: result.rows });
+  } catch (error) {
+    next(error);
+  }
+});
+
+attendeesRouter.get("/export", requireAuth, async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT id,
+              external_ref AS "externalRef",
+              name,
+              email,
+              phone,
+              college,
+              department,
+              metadata,
+              registered_on_spot AS "registeredOnSpot",
+              created_at AS "createdAt"
+         FROM attendees
+        ORDER BY created_at ASC`
+    );
+
+    const data = result.rows.map((row) => {
+      const customFields = row.metadata?.customFields || {};
+      return {
+        ID: row.id,
+        "External Ref": row.externalRef,
+        Name: row.name,
+        Email: row.email,
+        Phone: row.phone,
+        College: row.college,
+        Department: row.department,
+        "On Spot": row.registeredOnSpot ? "Yes" : "No",
+        "Verification Status": row.metadata?.verificationStatus || "verified",
+        "Created At": row.createdAt,
+        ...customFields
+      };
+    });
+
+    const worksheet = xlsx.utils.json_to_sheet(data);
+    const workbook = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(workbook, worksheet, "Attendees");
+    const buffer = xlsx.write(workbook, { type: "buffer", bookType: "xlsx" });
+
+    res.setHeader("Content-Disposition", 'attachment; filename="attendees_export.xlsx"');
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.send(buffer);
   } catch (error) {
     next(error);
   }

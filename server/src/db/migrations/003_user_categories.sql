@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS user_categories (
 );
 
 -- Link users to categories
-ALTER TABLE users ADD COLUMN IF NOT EXISTS category_id UUID REFERENCES user_categories(id) ON DELETE SET NULL;
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS category_id UUID REFERENCES user_categories(id) ON DELETE SET NULL;
 
 -- Index for fast user-by-category lookups
 CREATE INDEX IF NOT EXISTS idx_users_category ON users(category_id);
