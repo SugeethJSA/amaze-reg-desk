@@ -12,7 +12,31 @@ const FieldSchema = z.object({
   required: z.boolean().default(false),
   options: z.array(z.string().min(1)).default([]),
   sortOrder: z.coerce.number().int().default(0),
-  active: z.boolean().default(true)
+  active: z.boolean().default(true),
+  showInList: z.boolean().default(false)
+});
+
+// Public endpoint — no auth required — used by PublicRegister & PublicTransfer pages
+formFieldsRouter.get("/public", async (_req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT id,
+              field_key AS "fieldKey",
+              label,
+              field_type AS "fieldType",
+              required,
+              options,
+              sort_order AS "sortOrder",
+              active,
+              show_in_list AS "showInList"
+         FROM registration_form_fields
+        WHERE active = TRUE
+        ORDER BY sort_order ASC, label ASC`
+    );
+    res.json({ fields: result.rows });
+  } catch (error) {
+    next(error);
+  }
 });
 
 formFieldsRouter.get("/", requireAuth, async (_req, res, next) => {
@@ -26,6 +50,7 @@ formFieldsRouter.get("/", requireAuth, async (_req, res, next) => {
               options,
               sort_order AS "sortOrder",
               active,
+              show_in_list AS "showInList",
               created_at AS "createdAt",
               updated_at AS "updatedAt"
          FROM registration_form_fields
@@ -42,8 +67,8 @@ formFieldsRouter.post("/", requireAuth, requireAdmin, async (req, res, next) => 
     const input = FieldSchema.parse(req.body);
     const result = await pool.query(
       `INSERT INTO registration_form_fields
-         (field_key, label, field_type, required, options, sort_order, active)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+         (field_key, label, field_type, required, options, sort_order, active, show_in_list)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id,
                  field_key AS "fieldKey",
                  label,
@@ -51,8 +76,9 @@ formFieldsRouter.post("/", requireAuth, requireAdmin, async (req, res, next) => 
                  required,
                  options,
                  sort_order AS "sortOrder",
-                 active`,
-      [input.fieldKey, input.label, input.fieldType, input.required, JSON.stringify(input.options), input.sortOrder, input.active]
+                 active,
+                 show_in_list AS "showInList"`,
+      [input.fieldKey, input.label, input.fieldType, input.required, JSON.stringify(input.options), input.sortOrder, input.active, input.showInList]
     );
     res.status(201).json({ field: result.rows[0] });
   } catch (error) {
@@ -72,6 +98,7 @@ formFieldsRouter.put("/:id", requireAuth, requireAdmin, async (req, res, next) =
               options = $6,
               sort_order = $7,
               active = $8,
+              show_in_list = $9,
               updated_at = now()
         WHERE id = $1
         RETURNING id,
@@ -81,8 +108,9 @@ formFieldsRouter.put("/:id", requireAuth, requireAdmin, async (req, res, next) =
                   required,
                   options,
                   sort_order AS "sortOrder",
-                  active`,
-      [req.params.id, input.fieldKey, input.label, input.fieldType, input.required, JSON.stringify(input.options), input.sortOrder, input.active]
+                  active,
+                  show_in_list AS "showInList"`,
+      [req.params.id, input.fieldKey, input.label, input.fieldType, input.required, JSON.stringify(input.options), input.sortOrder, input.active, input.showInList]
     );
     if (!result.rows[0]) {
       return res.status(404).json({ error: "not_found", message: "Form field not found." });

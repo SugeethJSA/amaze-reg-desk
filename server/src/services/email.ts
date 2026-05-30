@@ -31,8 +31,15 @@ export async function sendQrEmail(input: {
     html: `
       <p>Hello ${input.name},</p>
       <p>Your event QR code is attached below. Please show it at the registration desk.</p>
-      <img src="${input.qrDataUrl}" alt="Event QR code" />
+      <p><img src="cid:qrcode" alt="Event QR code" style="width: 260px; height: 260px;" /></p>
       <p>If the image does not load, contact the organizing team.</p>
-    `
+    `,
+    attachments: [
+      {
+        filename: "qrcode.png",
+        path: input.qrDataUrl,
+        cid: "qrcode"
+      }
+    ]
   });
 }

@@ -3,6 +3,7 @@ import express from "express";
 import { ZodError } from "zod";
 import { config } from "./config.js";
 import { attendeesRouter } from "./routes/attendees.js";
+import { categoriesRouter } from "./routes/categories.js";
 import { authRouter } from "./routes/auth.js";
 import { formFieldsRouter } from "./routes/formFields.js";
 import { importsRouter } from "./routes/imports.js";
@@ -21,6 +22,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRouter);
+app.use("/api/categories", categoriesRouter);
 app.use("/api/attendees", attendeesRouter);
 app.use("/api/form-fields", formFieldsRouter);
 app.use("/api/imports", importsRouter);

@@ -4,6 +4,8 @@ export interface Session {
   token: string;
   qrDecryptKey?: string;
   user: { id: string; name: string; email: string; role: "admin" | "volunteer" };
+  capabilities?: Record<string, boolean>;
+  categoryName?: string | null;
 }
 
 export function getSession(): Session | null {
