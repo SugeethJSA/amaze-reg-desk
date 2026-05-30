@@ -30,6 +30,19 @@ Important fields:
 - `registered_on_spot`: distinguishes manual registrations.
 - `metadata`: stores import context or future custom fields.
 
+### `registration_form_fields`
+
+Defines admin-configurable fields that appear on the on-spot registration form.
+
+Important fields:
+
+- `field_key`: stable metadata key used when storing attendee custom values.
+- `field_type`: `text`, `email`, `phone`, `number`, `select`, `textarea`, or `checkbox`.
+- `required`: controls browser-side required validation.
+- `options`: select choices stored as JSON.
+- `sort_order`: controls display order.
+- `active`: hides a field without deleting stored attendee metadata.
+
 ### `import_batches`
 
 Records Excel imports and summary counts.

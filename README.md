@@ -7,6 +7,7 @@ The project is intentionally built as a web app instead of a native mobile app s
 ## Features
 
 - Excel `.xlsx` registration import with preview validation and duplicate detection.
+- Editable registration form fields for collecting event-specific attendee details.
 - On-spot attendee registration from the admin desk.
 - PostgreSQL-backed event data, scan logs, QR batches, send attempts, rules, volunteer users, and audit logs.
 - Encrypted QR payloads. QR codes do not expose plain attendee data.
@@ -14,6 +15,7 @@ The project is intentionally built as a web app instead of a native mobile app s
 - SMTP batch sending with unsent-only and failed-resend workflows.
 - CSV export fallback when email sending is unavailable during production.
 - Mobile-browser QR scanner with offline queueing.
+- Installable PWA shell for keeping the app on volunteer devices.
 - Dynamic scan rules for entry, food, kit, and custom checkpoints.
 - Conflict-resistant scan sync using local UUIDs, QR hashes, transactions, and database uniqueness constraints.
 - Live dashboard statistics for registrations, sent QR codes, check-ins, resources, and conflicts.
@@ -40,8 +42,8 @@ npm install
 
 Create a PostgreSQL database:
 
-```sql
-CREATE DATABASE amaze_reg_desk;
+```bash
+npm run db:create -w server
 ```
 
 Copy environment variables:
@@ -97,7 +99,7 @@ Important values:
 3. Admin generates a QR batch.
 4. Admin sends unsent QR codes through SMTP or exports a CSV fallback.
 5. Volunteers log in on phones and select the assigned station context.
-6. Volunteers scan attendee QR codes. If offline, scans are queued locally.
+6. Volunteers install/open the PWA and scan attendee QR codes. If offline, scans are queued locally.
 7. Backend sync validates scan rules, prevents duplicate claims, and records audit logs.
 8. Dashboard displays live registration, sending, scan, food, kit, and conflict statistics.
 
@@ -126,6 +128,7 @@ Server-only:
 
 ```bash
 npm run dev -w server
+npm run db:create -w server
 npm run db:migrate -w server
 npm run db:seed-admin -w server
 npm run test -w server

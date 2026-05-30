@@ -25,6 +25,12 @@ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+DO $$
+BEGIN
+  CREATE TYPE form_field_type AS ENUM ('text', 'email', 'phone', 'number', 'select', 'textarea', 'checkbox');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
@@ -58,6 +64,19 @@ CREATE TABLE IF NOT EXISTS attendees (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (email)
+);
+
+CREATE TABLE IF NOT EXISTS registration_form_fields (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  field_key TEXT UNIQUE NOT NULL,
+  label TEXT NOT NULL,
+  field_type form_field_type NOT NULL DEFAULT 'text',
+  required BOOLEAN NOT NULL DEFAULT FALSE,
+  options JSONB NOT NULL DEFAULT '[]'::jsonb,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS import_batches (
@@ -154,6 +173,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_attendees_name ON attendees USING gin (to_tsvector('simple', name));
+CREATE INDEX IF NOT EXISTS idx_registration_form_fields_order ON registration_form_fields(active, sort_order, label);
 CREATE INDEX IF NOT EXISTS idx_qr_codes_sent ON qr_codes(sent_at);
 CREATE INDEX IF NOT EXISTS idx_scan_events_station ON scan_events(station, scanned_at DESC);
 CREATE INDEX IF NOT EXISTS idx_scan_events_attendee ON scan_events(attendee_id);

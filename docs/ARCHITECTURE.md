@@ -24,9 +24,16 @@ The React frontend owns:
 - QR batch and sending controls.
 - Volunteer scanner screen.
 - Offline scan queue storage in browser local storage for V1.
+- PWA manifest and service worker registration for installability and offline app-shell caching.
 - Dashboard visualization and polling.
 
 The frontend never becomes authoritative for scan acceptance. Even when it queues offline scans, final acceptance happens on the server during sync.
+
+## Installable Offline Web App
+
+The client includes a web app manifest and service worker. Browsers can install it to the home screen or desktop, and the service worker caches the application shell so volunteers can reopen the scanner screen during weak connectivity.
+
+API writes are not cached by the service worker. Offline scan resilience is handled by the scanner queue, which stores pending scan payloads locally and syncs them when the backend becomes reachable.
 
 ## Backend Responsibilities
 

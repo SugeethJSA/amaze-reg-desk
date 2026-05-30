@@ -48,10 +48,11 @@ Backend output is generated in `server/dist`. Frontend output is generated in `c
 
 1. Back up the database.
 2. Deploy backend code.
-3. Run `npm run db:migrate -w server`.
-4. Run a health check against `/health`.
-5. Log in as admin.
-6. Test one import, one QR generation, and one scan before opening registrations.
+3. Run `npm run db:create -w server` if the database has not already been provisioned.
+4. Run `npm run db:migrate -w server`.
+5. Run a health check against `/health`.
+6. Log in as admin.
+7. Test one import, one QR generation, and one scan before opening registrations.
 
 ## Security Checklist
 

@@ -4,6 +4,7 @@ import { ZodError } from "zod";
 import { config } from "./config.js";
 import { attendeesRouter } from "./routes/attendees.js";
 import { authRouter } from "./routes/auth.js";
+import { formFieldsRouter } from "./routes/formFields.js";
 import { importsRouter } from "./routes/imports.js";
 import { qrRouter } from "./routes/qr.js";
 import { rulesRouter } from "./routes/rules.js";
@@ -21,6 +22,7 @@ app.get("/health", (_req, res) => {
 
 app.use("/api/auth", authRouter);
 app.use("/api/attendees", attendeesRouter);
+app.use("/api/form-fields", formFieldsRouter);
 app.use("/api/imports", importsRouter);
 app.use("/api/qr", qrRouter);
 app.use("/api/scans", scansRouter);

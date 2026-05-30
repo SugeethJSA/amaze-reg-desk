@@ -53,6 +53,18 @@ Returns the signed-in user.
 
 Admin-only. Creates admin or volunteer accounts.
 
+### `GET /auth/users`
+
+Admin-only. Lists users and available volunteer station scopes.
+
+### `PUT /auth/users/:id`
+
+Admin-only. Updates a user, active status, password, role, and volunteer scopes.
+
+### `DELETE /auth/users/:id`
+
+Admin-only. Deactivates a user and revokes volunteer scopes while preserving scan/audit history.
+
 ## Attendees
 
 ### `GET /attendees?q=search`
@@ -71,9 +83,42 @@ Request:
   "email": "student@example.com",
   "phone": "9999999999",
   "college": "Example College",
-  "department": "CSE"
+  "department": "CSE",
+  "customFields": {
+    "workshop_track": "Web"
+  }
 }
 ```
+
+## Registration Form Fields
+
+### `GET /form-fields`
+
+Returns configured fields in display order.
+
+### `POST /form-fields`
+
+Admin-only. Creates a field.
+
+```json
+{
+  "fieldKey": "workshop_track",
+  "label": "Workshop Track",
+  "fieldType": "select",
+  "required": true,
+  "options": ["Web", "Cybersecurity"],
+  "sortOrder": 1,
+  "active": true
+}
+```
+
+### `PUT /form-fields/:id`
+
+Admin-only. Updates a field using the same shape as create.
+
+### `DELETE /form-fields/:id`
+
+Admin-only. Deletes a field definition. Existing attendee metadata remains stored.
 
 ## Imports
 
@@ -189,3 +234,10 @@ Request:
 ### `GET /stats/dashboard`
 
 Returns registration, QR sending, scan, and station aggregates.
+
+Also returns dashboard chart data:
+
+- `scans.total` and `scans.pending`
+- `stationTotals` for station distribution graphs
+- `timeline` for hourly scan bars
+- `customFieldBreakdowns` for active select/checkbox registration fields

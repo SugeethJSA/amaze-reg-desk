@@ -32,6 +32,7 @@ Frontend tests should cover:
 - Dashboard rendering with aggregate stats.
 - Scanner payload validation.
 - Offline queue add and flush behavior.
+- PWA installability basics: manifest present, service worker registered, app shell reopens offline.
 - Accepted, duplicate, denied, pending, and failed scanner states.
 
 Run:

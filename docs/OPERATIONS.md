@@ -4,8 +4,9 @@
 
 1. Confirm PostgreSQL is reachable.
 2. Confirm `server/.env` has real `DATABASE_URL`, `JWT_SECRET`, `QR_MASTER_SECRET`, and SMTP values.
-3. Run migrations.
-4. Create at least one admin account with `npm run db:seed-admin -w server`.
+3. Create the database with `npm run db:create -w server`.
+4. Run migrations with `npm run db:migrate -w server`.
+5. Create at least one admin account with `npm run db:seed-admin -w server`.
 5. Import a small test Excel file.
 6. Generate QR codes for test attendees.
 7. Send a test email batch.
@@ -27,6 +28,17 @@ The first sheet should include columns that map to:
 The importer accepts common variations such as `Name`, `Email Address`, `Mobile`, and `Department`.
 
 Always preview before committing. The preview shows row numbers and validation errors.
+
+## Registration Form Builder
+
+Admins can create, edit, activate, deactivate, and delete on-spot registration fields from the Admin page. Use stable `field_key` values because attendee custom responses are stored under those keys in metadata.
+
+Recommended field key examples:
+
+- `workshop_track`
+- `diet_preference`
+- `team_name`
+- `id_card_verified`
 
 ## QR Batch Sending
 
@@ -51,11 +63,12 @@ If email fails:
 
 1. Admin creates volunteer accounts.
 2. Volunteers log in from phone browsers.
-3. Volunteers select their assigned station.
-4. Volunteers test one QR before gates open.
-5. Volunteers keep the scanner page open during the event.
-6. If internet drops, scans show pending sync.
-7. Volunteers press sync when internet returns.
+3. Volunteers install the app from the browser menu when prompted or use “Add to Home screen”.
+4. Volunteers select their assigned station.
+5. Volunteers test one QR before gates open.
+6. Volunteers keep the installed app or scanner page open during the event.
+7. If internet drops, scans show pending sync.
+8. Volunteers press sync when internet returns.
 
 ## Handling Duplicate Or Conflict Messages
 
