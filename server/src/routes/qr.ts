@@ -56,7 +56,7 @@ qrRouter.post("/send", requireAuth, requireAdmin, async (req, res, next) => {
     }).parse(req.body);
 
     const qrResult = await pool.query(
-      `SELECT q.*, a.name, a.email, a.data
+      `SELECT q.*, a.name, a.email, a.metadata
          FROM qr_codes q
          JOIN attendees a ON a.id = q.attendee_id
         WHERE ($1::uuid IS NULL OR q.batch_id = $1)

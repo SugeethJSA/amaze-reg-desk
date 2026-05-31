@@ -80,10 +80,10 @@ export function App() {
   }, []);
 
   if (!session) {
-    if (publicView === "register") {
+    if (publicView === "register" && globalSettings.public_registrations_enabled !== "false") {
       return <PublicRegister onBack={() => setPublicView("login")} globalSettings={globalSettings} />;
     }
-    if (publicView === "transfer") {
+    if (publicView === "transfer" && globalSettings.public_transfers_enabled !== "false") {
       return <PublicTransfer onBack={() => setPublicView("login")} globalSettings={globalSettings} />;
     }
     return (
@@ -195,9 +195,13 @@ function Login({
         <label>Password<input value={password} onChange={(event) => setPassword(event.target.value)} type="password" required /></label>
         {error && <p className="error">{error}</p>}
         <button type="submit" style={{ width: "100%", marginTop: "10px" }}>Sign in</button>
-        <div style={{ marginTop: "24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-          <button type="button" className="secondary" onClick={onNavigateRegister}>Register</button>
-          <button type="button" className="secondary" onClick={onNavigateTransfer}>Transfer</button>
+        <div style={{ marginTop: "24px", display: "flex", gap: "12px", width: "100%" }}>
+          {globalSettings.public_registrations_enabled !== "false" && (
+            <button type="button" className="secondary" style={{ flex: 1 }} onClick={onNavigateRegister}>Register</button>
+          )}
+          {globalSettings.public_transfers_enabled !== "false" && (
+            <button type="button" className="secondary" style={{ flex: 1 }} onClick={onNavigateTransfer}>Transfer</button>
+          )}
         </div>
       </form>
     </main>
@@ -1260,7 +1264,6 @@ function OnSpotForm({
     <form onSubmit={submit} className="stack">
       <div className="section-title" style={{ marginBottom: "12px" }}>
         <h3 style={{ fontSize: "20px", fontWeight: "800" }}>{isPublic ? "Register Attendee" : "On-Spot Registration"}</h3>
-        {isPublic && <p className="eyebrow" style={{ margin: 0 }}>DISCOVER 2026 DISTRICT OPERATIONS</p>}
       </div>
       {message && <p className="notice">{message}</p>}
       {error && <p className="error">{error}</p>}
@@ -1401,7 +1404,6 @@ function PublicTransfer({ onBack, globalSettings }: { onBack: () => void; global
         <form onSubmit={submit} className="stack">
           <div className="section-title">
             <h3 style={{ fontSize: "20px", fontWeight: "800" }}>Self-Applied Ticket Transfer</h3>
-            <p className="eyebrow" style={{ margin: 0 }}>DISCOVER 2026 DISTRICT OPERATIONS</p>
           </div>
           {message && <p className="notice">{message}</p>}
           {error && <p className="error">{error}</p>}
@@ -1883,7 +1885,6 @@ function AttendeeDatabase({
               <div className="modal-title-area">
                 <div>
                   <h3 style={{ fontSize: "20px", fontWeight: "800" }}>Register Attendee</h3>
-                  <p className="eyebrow" style={{ margin: "4px 0 0 0" }}>DISCOVER 2026 DISTRICT OPERATIONS</p>
                 </div>
                 <button type="button" className="icon-button" onClick={() => setEditingAttendee(null)}><X size={18} /></button>
               </div>
@@ -2152,6 +2153,19 @@ function BrandingSettingsPanel() {
             </label>
           </div>
           
+          <hr />
+          <h3>Public Features</h3>
+          <div className="form-grid">
+            <label className="checkbox-field" style={{ fontSize: "14px" }}>
+              <input type="checkbox" checked={settings.public_registrations_enabled !== "false"} onChange={e => setSettings({ ...settings, public_registrations_enabled: e.target.checked ? "true" : "false" })} />
+              Enable Public Registrations
+            </label>
+            <label className="checkbox-field" style={{ fontSize: "14px" }}>
+              <input type="checkbox" checked={settings.public_transfers_enabled !== "false"} onChange={e => setSettings({ ...settings, public_transfers_enabled: e.target.checked ? "true" : "false" })} />
+              Enable Public Ticket Transfers
+            </label>
+          </div>
+
           <hr />
           <h3>Email Templates</h3>
           <p className="field-caption">Use variables like <code>{`{{name}}`}</code>, <code>{`{{department}}`}</code>, and <code>{`{{qr_code_image}}`}</code> (required for QR rendering).</p>
