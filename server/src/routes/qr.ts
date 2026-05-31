@@ -56,7 +56,7 @@ qrRouter.post("/send", requireAuth, requireAdmin, async (req, res, next) => {
     }).parse(req.body);
 
     const qrResult = await pool.query(
-      `SELECT q.*, a.name, a.email
+      `SELECT q.*, a.name, a.email, a.data
          FROM qr_codes q
          JOIN attendees a ON a.id = q.attendee_id
         WHERE ($1::uuid IS NULL OR q.batch_id = $1)
@@ -72,11 +72,21 @@ qrRouter.post("/send", requireAuth, requireAdmin, async (req, res, next) => {
       [input.batchId ?? null, input.mode]
     );
 
+    const settingsResult = await pool.query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('email_subject_template', 'email_body_template')");
+    const settings = settingsResult.rows.reduce((acc, row) => ({ ...acc, [row.setting_key]: row.setting_value }), {} as Record<string, string>);
+
     const results = [];
     for (const row of qrResult.rows) {
       try {
         const qrDataUrl = await QRCode.toDataURL(row.encrypted_payload);
-        const info = await sendQrEmail({ to: row.email, name: row.name, qrDataUrl });
+        const variables = { ...row.data, name: row.name };
+        const info = await sendQrEmail({
+          to: row.email,
+          qrDataUrl,
+          subjectTemplate: settings.email_subject_template,
+          bodyTemplate: settings.email_body_template,
+          variables
+        });
         await pool.query(
           `INSERT INTO email_send_attempts (qr_code_id, batch_id, recipient_email, status, provider_message_id)
            VALUES ($1, $2, $3, 'sent', $4)`,

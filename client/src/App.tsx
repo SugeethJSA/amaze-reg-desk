@@ -7,7 +7,7 @@ import { deviceId, enqueueScan, flushScans, listQueuedScans } from "./offlineQue
 
 type View = "dashboard" | "admin" | "scanner";
 type Station = "entry" | "food" | "kit" | "custom";
-type AdminTab = "registrations" | "form" | "qr" | "rules" | "users" | "verification";
+type AdminTab = "registrations" | "form" | "qr" | "rules" | "users" | "verification" | "branding";
 type UserRow = {
   id: string;
   name: string;
@@ -65,6 +65,19 @@ export function App() {
   const [session, setSessionState] = useState<Session | null>(getSession());
   const [view, setView] = useState<View>("dashboard");
   const [publicView, setPublicView] = useState<"login" | "register" | "transfer">("login");
+  const [globalSettings, setGlobalSettings] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    api<{ settings: Record<string, string> }>("/settings").then((res) => {
+      setGlobalSettings(res.settings);
+      if (res.settings.primary_color) {
+        document.documentElement.style.setProperty("--color-primary", res.settings.primary_color);
+      }
+      if (res.settings.app_name) {
+        document.title = res.settings.app_name;
+      }
+    }).catch(() => undefined);
+  }, []);
 
   if (!session) {
     if (publicView === "register") {
@@ -89,10 +102,14 @@ export function App() {
     <div className="app-shell">
       <header className="app-header">
         <div className="brand">
-          <span className="brand-mark">A</span>
+          {globalSettings.logo_url ? (
+            <img src={globalSettings.logo_url} alt="Logo" style={{ width: 32, height: 32, borderRadius: 6, objectFit: "contain" }} />
+          ) : (
+            <span className="brand-mark">{globalSettings.app_name ? globalSettings.app_name.charAt(0) : "A"}</span>
+          )}
           <div>
-            <p className="eyebrow">Amaze</p>
-            <h1>Reg Desk</h1>
+            <p className="eyebrow">{globalSettings.event_name || "Amaze"}</p>
+            <h1>{globalSettings.app_name || "Reg Desk"}</h1>
           </div>
         </div>
         <nav className="top-nav">
@@ -808,11 +825,14 @@ function Admin() {
           ["qr", "QR delivery"],
           ["rules", "Scan rules"],
           ["users", "Users"],
-          ["verification", "Verification Queue"]
+          ["verification", "Verification Queue"],
+          ["branding", "Branding & Settings"]
         ].map(([id, label]) => (
           <button key={id} className={tab === id ? "active" : ""} onClick={() => setTab(id as AdminTab)}>{label}</button>
         ))}
       </nav>
+
+      {tab === "branding" && <BrandingSettingsPanel />}
 
       {tab === "registrations" && (
         <div className="admin-grid">
@@ -2056,5 +2076,77 @@ function Scanner({ session }: { session: Session }) {
         </div>
       </div>
     </section>
+  );
+}
+
+function BrandingSettingsPanel() {
+  const [settings, setSettings] = useState<Record<string, string>>({
+    app_name: "",
+    event_name: "",
+    logo_url: "",
+    primary_color: "#6366f1",
+    email_subject_template: "Your event QR code",
+    email_body_template: "<p>Hello {{name}},</p><p>Your event QR code is attached below. Please show it at the registration desk.</p><p>{{qr_code_image}}</p><p>If the image does not load, contact the organizing team.</p>"
+  });
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    api<{ settings: Record<string, string> }>("/settings").then((res) => {
+      setSettings((prev) => ({ ...prev, ...res.settings }));
+    }).catch(() => undefined);
+  }, []);
+
+  async function saveSettings(event: FormEvent) {
+    event.preventDefault();
+    setMessage("");
+    try {
+      await api("/settings", {
+        method: "PUT",
+        body: JSON.stringify(settings)
+      });
+      setMessage("Settings saved. Refresh the page to see global changes.");
+      if (settings.primary_color) document.documentElement.style.setProperty("--color-primary", settings.primary_color);
+      if (settings.app_name) document.title = settings.app_name;
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Failed to save settings.");
+    }
+  }
+
+  return (
+    <div className="admin-grid">
+      <div className="panel full-span">
+        <h3>Global Branding & Settings</h3>
+        {message && <p className="notice">{message}</p>}
+        <form className="stack" onSubmit={saveSettings}>
+          <div className="form-grid">
+            <label>App Name
+              <input type="text" value={settings.app_name || ""} onChange={e => setSettings({ ...settings, app_name: e.target.value })} placeholder="e.g. Amaze Reg Desk" />
+            </label>
+            <label>Event Name
+              <input type="text" value={settings.event_name || ""} onChange={e => setSettings({ ...settings, event_name: e.target.value })} placeholder="e.g. Amaze 2026" />
+            </label>
+            <label>Logo Image URL
+              <input type="url" value={settings.logo_url || ""} onChange={e => setSettings({ ...settings, logo_url: e.target.value })} placeholder="https://..." />
+            </label>
+            <label>Primary Theme Color
+              <input type="color" value={settings.primary_color || "#6366f1"} onChange={e => setSettings({ ...settings, primary_color: e.target.value })} style={{ height: "42px", padding: "4px" }} />
+            </label>
+          </div>
+          
+          <hr />
+          <h3>Email Templates</h3>
+          <p className="field-caption">Use variables like <code>{`{{name}}`}</code>, <code>{`{{department}}`}</code>, and <code>{`{{qr_code_image}}`}</code> (required for QR rendering).</p>
+          
+          <label>Email Subject
+            <input type="text" value={settings.email_subject_template || ""} onChange={e => setSettings({ ...settings, email_subject_template: e.target.value })} />
+          </label>
+          <label>Email Body (HTML)
+            <textarea value={settings.email_body_template || ""} onChange={e => setSettings({ ...settings, email_body_template: e.target.value })} rows={8} style={{ fontFamily: "monospace" }} />
+          </label>
+          
+          <button type="submit"><Save size={16} /> Save Settings</button>
+        </form>
+      </div>
+    </div>
   );
 }
