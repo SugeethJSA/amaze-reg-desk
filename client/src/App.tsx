@@ -134,18 +134,6 @@ export function App() {
         </div>
       </header>
       <main className="content">
-        <header className="page-heading">
-          <div>
-            <p className="eyebrow">Event operations</p>
-            <h2>
-              {view === "dashboard"
-                ? "Live control center"
-                : view === "admin"
-                ? "Registration management"
-                : "Volunteer workstation"}
-            </h2>
-          </div>
-        </header>
         {view === "dashboard" && <Dashboard />}
         {view === "admin" && <Admin />}
         {view === "scanner" && <VolunteerWorkstation session={session} />}
@@ -487,10 +475,10 @@ function Admin() {
   const [categories, setCategories] = useState<UserCategory[]>([]);
   const [capabilityKeys, setCapabilityKeys] = useState<string[]>([]);
   const [userSubTab, setUserSubTab] = useState<"users" | "categories">("users");
-  
+
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [userForm, setUserForm] = useState({ name: "", email: "", password: "", role: "volunteer", active: true, stations: "entry", categoryId: "" });
-  
+
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [categoryForm, setCategoryForm] = useState({ name: "", description: "", color: "#6366f1", active: true, stationPermissions: "", capabilities: {} as Record<string, boolean> });
 
@@ -1022,7 +1010,7 @@ function Admin() {
                   <div className="form-grid" style={{ gap: '10px' }}>
                     {capabilityKeys.map(cap => (
                       <label key={cap} className="checkbox-field" style={{ fontSize: '13px' }}>
-                        <input type="checkbox" checked={categoryForm.capabilities[cap] || false} onChange={() => toggleCategoryCapability(cap)} /> 
+                        <input type="checkbox" checked={categoryForm.capabilities[cap] || false} onChange={() => toggleCategoryCapability(cap)} />
                         {cap.replace("can_", "Can ").replace("_", " ")}
                       </label>
                     ))}
@@ -1111,7 +1099,7 @@ function Admin() {
                       <div>
                         <strong>{user.name}</strong>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          {user.email} - {user.role} 
+                          {user.email} - {user.role}
                           {user.categoryName && (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '99px', background: user.categoryColor ? `${user.categoryColor}20` : '#f1f5f9', color: user.categoryColor || '#475569' }}>
                               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: user.categoryColor || '#475569' }} />
@@ -1407,9 +1395,9 @@ function PublicTransfer({ onBack, globalSettings }: { onBack: () => void; global
           </div>
           {message && <p className="notice">{message}</p>}
           {error && <p className="error">{error}</p>}
-          
+
           <label>Original Ticket ID (UUID)<input value={originalId} onChange={(event) => setOriginalId(event.target.value)} placeholder="00000000-0000-0000-0000-000000000000" required /></label>
-          
+
           <h4 style={{ margin: "14px 0 0", fontSize: "14px", fontWeight: "800" }}>Recipient Registration Details</h4>
           <div className="form-grid">
             {activeFields.map((field) => (
@@ -1530,14 +1518,14 @@ function VerificationQueue({
               <h3>Review Pending Submission</h3>
               <button className="icon-button" onClick={() => setSelectedAttendee(null)}><X size={18} /></button>
             </div>
-            
+
             <p><strong>Type:</strong> {selectedAttendee.metadata?.transferredFrom ? "Ticket Transfer" : "New Registration"}</p>
             <p><strong>Name:</strong> {selectedAttendee.name}</p>
             <p><strong>Email:</strong> {selectedAttendee.email}</p>
             <p><strong>Phone:</strong> {selectedAttendee.phone ?? "None"}</p>
             <p><strong>College:</strong> {selectedAttendee.college ?? "None"}</p>
             <p><strong>Department:</strong> {selectedAttendee.department ?? "None"}</p>
-            
+
             {selectedAttendee.metadata?.transferredFrom && (
               <div className="panel" style={{ margin: "14px 0" }}>
                 <h4>Original Ticket Holder Info</h4>
@@ -1632,7 +1620,7 @@ function AttendeeDatabase({
   const [editValues, setEditValues] = useState<Record<string, any>>({});
   const [recipientValues, setRecipientValues] = useState<Record<string, any>>({});
   const [paymentProof, setPaymentProof] = useState<string | null>(null);
-  
+
   const [isTransferMode, setIsTransferMode] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -1795,7 +1783,7 @@ function AttendeeDatabase({
         .concat([item.metadata?.verificationStatus ?? "verified"]);
     });
 
-    const csvContent = "data:text/csv;charset=utf-8," 
+    const csvContent = "data:text/csv;charset=utf-8,"
       + [headers.join(",")].concat(csvRows.map((e) => e.map((val) => `"${String(val).replaceAll('"', '""')}"`).join(","))).join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -1888,7 +1876,7 @@ function AttendeeDatabase({
                 </div>
                 <button type="button" className="icon-button" onClick={() => setEditingAttendee(null)}><X size={18} /></button>
               </div>
-              
+
               <form onSubmit={saveEdit} className="stack">
                 <div className="form-grid">
                   {activeFields.map((field) => (
@@ -1903,7 +1891,7 @@ function AttendeeDatabase({
                 <button type="submit" style={{ marginTop: "14px", width: "100%" }}><Save size={15} /> Save Changes</button>
               </form>
             </div>
-            
+
             <div className="modal-right">
               <div className="transfer-logic-header">
                 <div className="transfer-icon-box"><RefreshCcw size={18} /></div>
@@ -1940,7 +1928,7 @@ function AttendeeDatabase({
                       </div>
                     )}
                   </div>
-                  
+
                   <button type="submit" style={{ background: "#db2777", width: "100%" }}><Send size={15} /> Confirm Ticket Transfer</button>
                 </form>
               )}
@@ -1973,7 +1961,7 @@ function Scanner({ session }: { session: Session }) {
         setPayload(text);
         setResult("QR captured. Review and record the scan.");
       };
-      
+
       try {
         // Try to open the rear camera first
         await scannerRef.current.start({ facingMode: "environment" }, config, onScan, () => undefined);
@@ -2152,7 +2140,7 @@ function BrandingSettingsPanel() {
               <input type="color" value={settings.primary_color || "#6366f1"} onChange={e => setSettings({ ...settings, primary_color: e.target.value })} style={{ height: "42px", padding: "4px" }} />
             </label>
           </div>
-          
+
           <hr />
           <h3>Public Features</h3>
           <div className="form-grid">
@@ -2169,14 +2157,14 @@ function BrandingSettingsPanel() {
           <hr />
           <h3>Email Templates</h3>
           <p className="field-caption">Use variables like <code>{`{{name}}`}</code>, <code>{`{{department}}`}</code>, and <code>{`{{qr_code_image}}`}</code> (required for QR rendering).</p>
-          
+
           <label>Email Subject
             <input type="text" value={settings.email_subject_template || ""} onChange={e => setSettings({ ...settings, email_subject_template: e.target.value })} />
           </label>
           <label>Email Body (HTML)
             <textarea value={settings.email_body_template || ""} onChange={e => setSettings({ ...settings, email_body_template: e.target.value })} rows={8} style={{ fontFamily: "monospace" }} />
           </label>
-          
+
           <button type="submit"><Save size={16} /> Save Settings</button>
         </form>
       </div>
