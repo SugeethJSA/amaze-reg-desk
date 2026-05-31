@@ -2028,8 +2028,13 @@ function Scanner({ session }: { session: Session }) {
               {cameraActive ? <CameraOff size={16} /> : <Camera size={16} />} {cameraActive ? "Stop camera" : "Start camera"}
             </button>
           </div>
-          <div id="qr-reader" className={cameraActive ? "qr-reader active" : "qr-reader"}>
-            {!cameraActive && <div className="camera-placeholder"><QrCode size={42} /><span>Camera is off</span></div>}
+          <div className="qr-container" style={{ position: "relative", width: "100%", aspectRatio: "1", borderRadius: "16px", overflow: "hidden", background: "#0f172a" }}>
+            <div id="qr-reader" className={cameraActive ? "qr-reader active" : "qr-reader"} style={{ width: "100%", height: "100%", position: "absolute", inset: 0, opacity: cameraActive ? 1 : 0, zIndex: cameraActive ? 10 : -1 }}></div>
+            {!cameraActive && (
+              <div className="camera-placeholder" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 5 }}>
+                <QrCode size={42} /><span>Camera is off</span>
+              </div>
+            )}
           </div>
           {cameraError && <p className="error">{cameraError}</p>}
         </div>

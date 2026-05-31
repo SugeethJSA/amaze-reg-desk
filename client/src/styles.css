@@ -1515,14 +1515,7 @@ tbody tr:hover {
 
 .qr-reader {
   width: 100%;
-  aspect-ratio: 1;
-  border-radius: 16px;
-  overflow: hidden;
-  background: #0f172a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
+  height: 100%;
 }
 
 .qr-reader.active {
