@@ -16,6 +16,7 @@
   "routes": [
     { "src": "/api/(.*)", "dest": "/server/src/index.ts" },
     { "src": "/assets/(.*)", "dest": "/client/assets/$1" },
+    { "src": "/(manifest\\.webmanifest|sw\\.js|icon\\.svg|icon-.*\\.png)", "dest": "/client/$1" },
     { "src": "/(.*)", "dest": "/client/index.html" }
   ]
 }
