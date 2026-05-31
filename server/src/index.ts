@@ -51,6 +51,11 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
   return res.status(500).json({ error: "internal_error", message });
 });
 
-app.listen(config.API_PORT, () => {
-  console.log(`Amaze Reg Desk API listening on http://localhost:${config.API_PORT}`);
-});
+if (process.env.VERCEL !== "1") {
+  app.listen(config.API_PORT, () => {
+    console.log(`Amaze Reg Desk API listening on http://localhost:${config.API_PORT}`);
+  });
+}
+
+export default app;
+
