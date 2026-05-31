@@ -1928,7 +1928,7 @@ function Scanner({ session }: { session: Session }) {
       if (!scannerRef.current) {
         scannerRef.current = new Html5Qrcode("qr-reader");
       }
-      const config = { fps: 8, qrbox: { width: 260, height: 260 } };
+      const config = { fps: 10 };
       const onScan = (text: string) => {
         setPayload(text);
         setResult("QR captured. Review and record the scan.");
