@@ -1,5 +1,6 @@
 import cors from "cors";
 import express from "express";
+import rateLimit from "express-rate-limit";
 import { ZodError } from "zod";
 import { config } from "./config.js";
 import { attendeesRouter } from "./routes/attendees.js";
@@ -17,6 +18,30 @@ const app = express();
 app.use(cors({ origin: config.CORS_ORIGIN, credentials: true }));
 app.use(express.json({ limit: "2mb" }));
 
+// Trust Vercel/proxy headers to get the correct client IP
+app.set("trust proxy", 1);
+
+// General API rate limiter (100 requests per 15 minutes per IP)
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { error: "too_many_requests", message: "Too many requests from this IP, please try again after 15 minutes" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Stricter rate limiter for Authentication/Login routes (20 requests per 15 minutes)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: "too_many_requests", message: "Too many login attempts from this IP, please try again after 15 minutes" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply general limiter to all API routes
+app.use("/api/", apiLimiter);
+
 app.get("/health", (_req, res) => {
   res.json({ ok: true, service: "amaze-reg-desk-api" });
 });
@@ -27,7 +52,7 @@ app.get("/api/version", (_req, res) => {
 
 import { settingsRouter } from "./routes/settings.js";
 
-app.use("/api/auth", authRouter);
+app.use("/api/auth", authLimiter, authRouter);
 app.use("/api/categories", categoriesRouter);
 app.use("/api/settings", settingsRouter);
 app.use("/api/attendees", attendeesRouter);
