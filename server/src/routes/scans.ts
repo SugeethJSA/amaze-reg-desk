@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
-import { withTransaction } from "../db/pool.js";
-import { requireAuth } from "../middleware/auth.js";
+import { pool, withTransaction } from "../db/pool.js";
+import { requireAuth, requireAdmin } from "../middleware/auth.js";
 import { hashPayload } from "../services/crypto.js";
 import { evaluateRule, resolveActiveRule } from "../services/rules.js";
 import type { ScanSyncInput } from "../types.js";
@@ -134,6 +134,27 @@ scansRouter.post("/sync", requireAuth, async (req, res, next) => {
     });
 
     res.json({ results });
+  } catch (error) {
+    next(error);
+  }
+});
+
+scansRouter.get("/", requireAuth, requireAdmin, async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT 
+         s.id, s.station, s.status, s.reason, s.scanned_at,
+         a.name as attendee_name, a.email as attendee_email,
+         u.name as volunteer_name,
+         r.name as rule_name
+       FROM scan_events s
+       JOIN attendees a ON a.id = s.attendee_id
+       LEFT JOIN users u ON u.id = s.volunteer_id
+       LEFT JOIN scan_rules r ON r.id = s.rule_id
+       ORDER BY s.scanned_at DESC
+       LIMIT 100`
+    );
+    res.json({ scans: result.rows });
   } catch (error) {
     next(error);
   }

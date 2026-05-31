@@ -81,13 +81,14 @@ export function App() {
 
   if (!session) {
     if (publicView === "register") {
-      return <PublicRegister onBack={() => setPublicView("login")} />;
+      return <PublicRegister onBack={() => setPublicView("login")} globalSettings={globalSettings} />;
     }
     if (publicView === "transfer") {
-      return <PublicTransfer onBack={() => setPublicView("login")} />;
+      return <PublicTransfer onBack={() => setPublicView("login")} globalSettings={globalSettings} />;
     }
     return (
       <Login
+        globalSettings={globalSettings}
         onLogin={(next) => {
           setSession(next);
           setSessionState(next);
@@ -156,11 +157,13 @@ export function App() {
 function Login({
   onLogin,
   onNavigateRegister,
-  onNavigateTransfer
+  onNavigateTransfer,
+  globalSettings
 }: {
   onLogin: (session: Session) => void;
   onNavigateRegister: () => void;
   onNavigateTransfer: () => void;
+  globalSettings: Record<string, string>;
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -183,8 +186,11 @@ function Login({
   return (
     <main className="login-page">
       <form onSubmit={submit} className="login-panel">
-        <p className="eyebrow">Event operations</p>
-        <h1 style={{ fontSize: "28px", fontWeight: "900", letterSpacing: "-0.03em" }}>Amaze Reg Desk</h1>
+        <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+          {globalSettings.logo_url && <img src={globalSettings.logo_url} alt="Logo" style={{ width: 48, height: 48, borderRadius: 8, objectFit: "contain", marginBottom: "1rem" }} />}
+          <p className="eyebrow">{globalSettings.event_name || "Event operations"}</p>
+          <h1 style={{ fontSize: "28px", fontWeight: "900", letterSpacing: "-0.03em", marginTop: "4px" }}>{globalSettings.app_name || "Amaze Reg Desk"}</h1>
+        </div>
         <label>Email<input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required /></label>
         <label>Password<input value={password} onChange={(event) => setPassword(event.target.value)} type="password" required /></label>
         {error && <p className="error">{error}</p>}
@@ -954,21 +960,24 @@ function Admin() {
       )}
 
       {tab === "rules" && (
-        <form className="panel narrow-panel" onSubmit={createRule}>
-          <h3>Scan rule</h3>
-          <label>Name<input value={ruleForm.name} onChange={(event) => setRuleForm({ ...ruleForm, name: event.target.value })} required /></label>
-          <label>Station
-            <select value={ruleForm.station} onChange={(event) => setRuleForm({ ...ruleForm, station: event.target.value })}>
-              <option value="entry">Entry</option>
-              <option value="food">Food</option>
-              <option value="kit">Kit</option>
-              <option value="custom">Custom</option>
-            </select>
-          </label>
-          <label>Starts<input type="datetime-local" value={ruleForm.startsAt} onChange={(event) => setRuleForm({ ...ruleForm, startsAt: event.target.value })} /></label>
-          <label>Ends<input type="datetime-local" value={ruleForm.endsAt} onChange={(event) => setRuleForm({ ...ruleForm, endsAt: event.target.value })} /></label>
-          <button type="submit">Create rule</button>
-        </form>
+        <div className="admin-grid">
+          <form className="panel narrow-panel" onSubmit={createRule}>
+            <h3>Scan rule</h3>
+            <label>Name<input value={ruleForm.name} onChange={(event) => setRuleForm({ ...ruleForm, name: event.target.value })} required /></label>
+            <label>Station
+              <select value={ruleForm.station} onChange={(event) => setRuleForm({ ...ruleForm, station: event.target.value })}>
+                <option value="entry">Entry</option>
+                <option value="food">Food</option>
+                <option value="kit">Kit</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+            <label>Starts<input type="datetime-local" value={ruleForm.startsAt} onChange={(event) => setRuleForm({ ...ruleForm, startsAt: event.target.value })} /></label>
+            <label>Ends<input type="datetime-local" value={ruleForm.endsAt} onChange={(event) => setRuleForm({ ...ruleForm, endsAt: event.target.value })} /></label>
+            <button type="submit">Create rule</button>
+          </form>
+          <ScanHistoryPanel />
+        </div>
       )}
 
       {tab === "users" && (
@@ -1281,7 +1290,7 @@ function OnSpotForm({
 }
 
 // Public Register Component
-function PublicRegister({ onBack }: { onBack: () => void }) {
+function PublicRegister({ onBack, globalSettings }: { onBack: () => void; globalSettings: Record<string, string>; }) {
   const [fields, setFields] = useState<FormField[]>([]);
 
   useEffect(() => {
@@ -1293,6 +1302,11 @@ function PublicRegister({ onBack }: { onBack: () => void }) {
   return (
     <main className="login-page">
       <div className="login-panel" style={{ maxWidth: "800px", width: "90%", textAlign: "left" }}>
+        <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+          {globalSettings.logo_url && <img src={globalSettings.logo_url} alt="Logo" style={{ width: 48, height: 48, borderRadius: 8, objectFit: "contain", marginBottom: "1rem" }} />}
+          <p className="eyebrow">{globalSettings.event_name || "Event operations"}</p>
+          <h1 style={{ fontSize: "28px", fontWeight: "900", letterSpacing: "-0.03em", marginTop: "4px" }}>Register for {globalSettings.app_name || "Amaze Reg Desk"}</h1>
+        </div>
         <button type="button" className="secondary" style={{ marginBottom: "20px" }} onClick={onBack}><X size={16} /> Back to Sign In</button>
         <OnSpotForm fields={fields} isPublic={true} />
       </div>
@@ -1301,7 +1315,7 @@ function PublicRegister({ onBack }: { onBack: () => void }) {
 }
 
 // Public Ticket Transfer Component
-function PublicTransfer({ onBack }: { onBack: () => void }) {
+function PublicTransfer({ onBack, globalSettings }: { onBack: () => void; globalSettings: Record<string, string>; }) {
   const [originalId, setOriginalId] = useState("");
   const [recipientValues, setRecipientValues] = useState<Record<string, any>>({});
   const [paymentProof, setPaymentProof] = useState<string | null>(null);
@@ -1378,6 +1392,11 @@ function PublicTransfer({ onBack }: { onBack: () => void }) {
   return (
     <main className="login-page">
       <div className="login-panel" style={{ maxWidth: "800px", width: "90%", textAlign: "left" }}>
+        <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+          {globalSettings.logo_url && <img src={globalSettings.logo_url} alt="Logo" style={{ width: 48, height: 48, borderRadius: 8, objectFit: "contain", marginBottom: "1rem" }} />}
+          <p className="eyebrow">{globalSettings.event_name || "Event operations"}</p>
+          <h1 style={{ fontSize: "28px", fontWeight: "900", letterSpacing: "-0.03em", marginTop: "4px" }}>Transfer {globalSettings.app_name || "Amaze Reg Desk"} Ticket</h1>
+        </div>
         <button type="button" className="secondary" style={{ marginBottom: "20px" }} onClick={onBack}><X size={16} /> Back to Sign In</button>
         <form onSubmit={submit} className="stack">
           <div className="section-title">
@@ -2146,6 +2165,70 @@ function BrandingSettingsPanel() {
           
           <button type="submit"><Save size={16} /> Save Settings</button>
         </form>
+      </div>
+    </div>
+  );
+}
+
+function ScanHistoryPanel() {
+  const [scans, setScans] = useState<any[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    const load = () => {
+      api<{ scans: any[] }>("/scans").then(res => {
+        if (active) setScans(res.scans);
+      }).catch(() => undefined);
+    };
+    load();
+    const interval = setInterval(load, 5000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  return (
+    <div className="panel wide-panel">
+      <h3>Recent Scans</h3>
+      <div className="table-wrap" style={{ maxHeight: "500px", overflowY: "auto" }}>
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Attendee</th>
+              <th>Station</th>
+              <th>Status</th>
+              <th>Volunteer</th>
+              <th>Rule</th>
+            </tr>
+          </thead>
+          <tbody>
+            {scans.length === 0 ? (
+              <tr><td colSpan={6} style={{ textAlign: "center", color: "#64748b" }}>No recent scans.</td></tr>
+            ) : (
+              scans.map(scan => (
+                <tr key={scan.id}>
+                  <td>{new Date(scan.scanned_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                  <td>
+                    <strong>{scan.attendee_name || "Unknown"}</strong><br />
+                    <span className="field-caption">{scan.attendee_email}</span>
+                  </td>
+                  <td><span className="badge" style={{ background: "#334155" }}>{scan.station}</span></td>
+                  <td>
+                    {scan.status === "accepted" ? (
+                      <span className="badge success">Accepted</span>
+                    ) : (
+                      <span className="badge error" title={scan.reason}>{scan.status}</span>
+                    )}
+                  </td>
+                  <td>{scan.volunteer_name || "Offline"}</td>
+                  <td>{scan.rule_name || "-"}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
