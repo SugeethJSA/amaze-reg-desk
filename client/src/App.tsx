@@ -1928,18 +1928,27 @@ function Scanner({ session }: { session: Session }) {
       if (!scannerRef.current) {
         scannerRef.current = new Html5Qrcode("qr-reader");
       }
-      await scannerRef.current.start(
-        { facingMode: "environment" },
-        { fps: 8, qrbox: { width: 260, height: 260 } },
-        (text) => {
-          setPayload(text);
-          setResult("QR captured. Review and record the scan.");
-        },
-        () => undefined
-      );
+      const config = { fps: 8, qrbox: { width: 260, height: 260 } };
+      const onScan = (text: string) => {
+        setPayload(text);
+        setResult("QR captured. Review and record the scan.");
+      };
+      
+      try {
+        // Try to open the rear camera first
+        await scannerRef.current.start({ facingMode: "environment" }, config, onScan, () => undefined);
+      } catch (err) {
+        // If it fails (e.g. laptop has no rear camera), fallback to the first available camera
+        const devices = await Html5Qrcode.getCameras();
+        if (devices && devices.length > 0) {
+          await scannerRef.current.start(devices[0].id, config, onScan, () => undefined);
+        } else {
+          throw err;
+        }
+      }
       setCameraActive(true);
     } catch (error) {
-      setCameraError(error instanceof Error ? error.message : "Camera could not start.");
+      setCameraError(error instanceof Error ? error.message : "Camera could not start. Please check permissions.");
       setCameraActive(false);
     }
   }

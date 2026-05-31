@@ -41,9 +41,10 @@ app.use("/api/stats", statsRouter);
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(error);
   if (error instanceof ZodError) {
+    const issueMessages = error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join(", ");
     return res.status(400).json({
       error: "validation_error",
-      message: "Request validation failed.",
+      message: `Validation failed - ${issueMessages}`,
       issues: error.issues
     });
   }
