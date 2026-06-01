@@ -1,113 +1,50 @@
 # Architecture
 
-## System Overview
+Amaze Reg Desk is built as a modular monolithic application deployed serverlessly. It consists of a React frontend and an Express backend, sharing TypeScript types.
 
-Reg Desk is split into a React frontend, Express API, and PostgreSQL database. The browser is used for both admin operations and volunteer scanning. PostgreSQL remains the only source of truth for attendee records, QR code state, email attempts, rules, and scan events.
-
-```mermaid
-flowchart LR
-  Admin["Admin browser"] --> API["Express API"]
-  Volunteer["Volunteer phone browser"] --> API
-  API --> DB["PostgreSQL"]
-  API --> SMTP["SMTP server"]
-  Admin --> Export["CSV fallback export"]
-  Volunteer --> Cache["Local offline queue"]
-  Cache --> API
-```
-
-## Frontend Responsibilities
-
-The React frontend owns:
-
-- Login/session UI.
-- Admin import and registration screens.
-- QR batch and sending controls.
-- Volunteer scanner screen.
-- Offline scan queue storage in browser local storage for V1.
-- PWA manifest and service worker registration for installability and offline app-shell caching.
-- Dashboard visualization and polling.
-
-The frontend never becomes authoritative for scan acceptance. Even when it queues offline scans, final acceptance happens on the server during sync.
-
-## Installable Offline Web App
-
-The client includes a web app manifest and service worker. Browsers can install it to the home screen or desktop, and the service worker caches the application shell so volunteers can reopen the scanner screen during weak connectivity.
-
-API writes are not cached by the service worker. Offline scan resilience is handled by the scanner queue, which stores pending scan payloads locally and syncs them when the backend becomes reachable.
-
-## Backend Responsibilities
-
-The Express API owns:
-
-- Authentication and role enforcement.
-- Excel parsing and import commit.
-- Attendee creation and search.
-- QR payload encryption and QR metadata storage.
-- SMTP sending and send attempt logging.
-- CSV fallback export.
-- Scan rule evaluation.
-- Scan idempotency and duplicate prevention.
-- Dashboard aggregate endpoints.
-
-## Database Responsibilities
-
-PostgreSQL owns:
-
-- Durable attendee and event state.
-- Unique attendee email constraints.
-- One QR code per attendee.
-- Idempotent scan sync using `local_scan_id`.
-- Duplicate resource prevention using partial unique constraints.
-- Audit trail persistence.
-
-## Import Flow
-
-```mermaid
-sequenceDiagram
-  participant Admin
-  participant Client
-  participant API
-  participant DB
-  Admin->>Client: Upload Excel
-  Client->>API: POST /imports/preview
-  API-->>Client: Row-level validation result
-  Admin->>Client: Commit accepted rows
-  Client->>API: POST /imports/commit
-  API->>DB: Upsert attendees and create import batch
-  API-->>Client: Import summary
-```
-
-## QR Send Flow
-
-```mermaid
-sequenceDiagram
-  participant Admin
-  participant API
-  participant DB
-  participant SMTP
-  Admin->>API: Generate QR batch
-  API->>DB: Create encrypted payload per attendee
-  Admin->>API: Send unsent QR codes
-  API->>SMTP: Send email with QR image
-  API->>DB: Log sent or failed attempt
-  API-->>Admin: Batch result
-```
-
-## Scanner Flow
+## High-Level Topology
 
 ```mermaid
 flowchart TD
-  Scan["Volunteer scans QR"] --> Shape["Validate encrypted QR shape"]
-  Shape --> Online{"Network online?"}
-  Online -->|Yes| Sync["POST /scans/sync"]
-  Online -->|No| Queue["Save scan locally"]
-  Queue --> Retry["Sync when network returns"]
-  Retry --> Sync
-  Sync --> Rule["Resolve active rule"]
-  Rule --> DBCheck["Database conflict checks"]
-  DBCheck --> Result["accepted / duplicate / denied / conflict"]
+    Client[React Frontend / PWA Scanner]
+    API[Express API Backend]
+    DB[(PostgreSQL / Supabase)]
+    SMTP[SMTP Email Provider]
+
+    Client -- HTTPS / JSON --> API
+    API -- pg driver --> DB
+    API -- nodemailer --> SMTP
 ```
 
-## Realtime Statistics
+## System Components
 
-V1 uses dashboard polling every few seconds. This avoids WebSocket deployment complexity while still giving organizers useful live visibility. Server-sent events or WebSockets can be added later without changing the underlying stats queries.
+### 1. Frontend (Client)
+- **Framework**: React 19 + TypeScript + Vite.
+- **Routing**: Client-side routing. Vercel routing configuration (`vercel.json`) ensures paths correctly resolve to `index.html`.
+- **PWA Capabilities**: 
+  - Uses `manifest.webmanifest` and `sw.js` for offline caching of app shells and icons.
+  - Automatically installable on Android and iOS ("Add to Home Screen").
+- **State Management**: Context/State-based global settings. Theme colors are injected directly into `document.documentElement` dynamically.
+
+### 2. Backend (Server)
+- **Framework**: Express with TypeScript. Hosted as Serverless Functions on Vercel.
+- **QR Generation**: In-memory generation using `qrcode` and `crypto` (AES-256-GCM).
+- **Email Engine**: 
+  - Dynamic `{{variable}}` string interpolation engine targeting user `metadata` custom fields.
+  - Generates HTML emails with embedded CIDs for the QR code attachment.
+- **Validation**: Strict `zod` schema parsing on all incoming requests to ensure type safety before DB execution.
+
+### 3. Database Layer
+- **Driver**: Raw `pg` SQL queries mapping directly to schema interfaces.
+- **Flexibility**: The `metadata` column in the `attendees` table utilizes `JSONB` for schema-less data extension, powering the Dynamic Form Builder without requiring constant schema migrations.
+
+## Key Feature Architectures
+
+### Dynamic Branding & Settings
+Settings are stored as key-value string pairs in the `system_settings` table. On app initialization, the frontend performs a pre-flight fetch to `/settings` and populates the global `globalSettings` state. This controls CSS Custom Properties, Logo injection, and the visibility of Public Forms.
+
+### Verification Queue
+Public registration and ticket transfers inject rows into `attendees` with a specific JSONB payload: `{ "verificationStatus": "pending", "paymentProof": "data:image/..." }`. The admin dashboard polls for these records, rendering them in a queue. An approval action scrubs the pending status, allowing QR generation.
+
+### Sync & Offline Scanning
+Volunteers using the PWA scanner can perform scans without network access. Scans are logged locally in memory. Upon regaining connectivity, a background process flushes the queue to `POST /scans/sync`. The backend is idempotent against duplicate sync attempts due to `client_id` unique constraints on `scan_events`.

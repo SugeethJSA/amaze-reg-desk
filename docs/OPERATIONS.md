@@ -1,98 +1,44 @@
 # Operations Guide
 
-## Before Event Day
+This guide is for Event Administrators managing operations through the Amaze Reg Desk dashboard.
 
-1. Confirm PostgreSQL is reachable.
-2. Confirm `server/.env` has real `DATABASE_URL`, `JWT_SECRET`, `QR_MASTER_SECRET`, and SMTP values.
-3. Create the database with `npm run db:create -w server`.
-4. Run migrations with `npm run db:migrate -w server`.
-5. Create at least one admin account with `npm run db:seed-admin -w server`.
-5. Import a small test Excel file.
-6. Generate QR codes for test attendees.
-7. Send a test email batch.
-8. Test scanner login on the same phone models volunteers will use.
-9. Create scan rules for entry, food, kit, and any custom checkpoints.
-10. Dry run duplicate scan behavior.
+## 1. Global Branding
+Navigate to the **Admin -> Branding & Settings** tab.
+Here you can set the `App Name`, `Event Name`, `Logo Image URL`, and `Primary Theme Color`. Once saved, these immediately sync to the login, registration, and transfer pages.
 
-## Excel Import Checklist
+## 2. Dynamic Form Builder
+If your event requires specific attendee information (like "T-Shirt Size" or "Discord ID"):
+1. Go to the **Form builder** tab.
+2. Click **Add Field**.
+3. Select the type (Text, Select, Checkbox, etc).
+4. Save. This field will automatically appear on all On-Spot registration forms and Public Registration pages.
 
-The first sheet should include columns that map to:
+## 3. Public Features
+In the **Branding & Settings** tab, you can toggle:
+- `Enable Public Registrations`
+- `Enable Public Ticket Transfers`
 
-- Name
-- Email
-- Phone
-- College
-- Department
-- External registration ID, if available
+If public registrations are on, users can submit their details and upload a "Payment Proof" image. These fall into the **Verification Queue**.
 
-The importer accepts common variations such as `Name`, `Email Address`, `Mobile`, and `Department`.
+## 4. Verification Queue
+Registrations and Transfers from the public require manual staff approval.
+1. Navigate to the **Verification Queue**.
+2. Review the submitted data and the uploaded payment proof image.
+3. Click **Approve** (activates their QR code) or **Reject** (deletes the request).
 
-Always preview before committing. The preview shows row numbers and validation errors.
+## 5. Volunteers & Roles
+1. Go to **Users**.
+2. Create **Categories** (e.g. "Security", "Catering"). Assign them specific station scopes (e.g. `entry`, `day-1-lunch`).
+3. Create a **Volunteer User** and assign them to that category.
+4. If a specific volunteer needs extra access, override their access by manually checking scopes in their profile.
 
-## Registration Form Builder
+## 6. Email Templating
+QR Codes are sent to users via email. Configure the email template in **Branding & Settings**.
+- You must include `{{qr_code_image}}` in the HTML body where you want the QR code to appear.
+- Use double brackets for any other variable, including custom form fields: e.g. `{{name}}`, `{{college}}`, `{{discord_id}}`.
 
-Admins can create, edit, activate, deactivate, and delete on-spot registration fields from the Admin page. Use stable `field_key` values because attendee custom responses are stored under those keys in metadata.
-
-Recommended field key examples:
-
-- `workshop_track`
-- `diet_preference`
-- `team_name`
-- `id_card_verified`
-
-## QR Batch Sending
-
-Recommended flow:
-
-1. Generate a QR batch after import.
-2. Send in `unsent` mode.
-3. Review failed attempts.
-4. Retry with `failed` mode if SMTP recovered.
-5. Use CSV export fallback if SMTP is unavailable near event time.
-
-## SMTP Failure Fallback
-
-If email fails:
-
-1. Download `/api/qr/export.csv`.
-2. Share QR payloads manually through the event team’s chosen channel.
-3. Keep the failed send attempts in the system for later audit.
-4. Do not regenerate QR codes unless there is a security reason.
-
-## Volunteer Scanner Setup
-
-1. Admin creates volunteer accounts.
-2. Volunteers log in from phone browsers.
-3. Volunteers install the app from the browser menu when prompted or use “Add to Home screen”.
-4. Volunteers select their assigned station.
-5. Volunteers test one QR before gates open.
-6. Volunteers keep the installed app or scanner page open during the event.
-7. If internet drops, scans show pending sync.
-8. Volunteers press sync when internet returns.
-
-## Handling Duplicate Or Conflict Messages
-
-- **Duplicate**: the attendee has already been accepted for the same station/rule.
-- **Denied**: the QR is invalid, rule is inactive, or station context is wrong.
-- **Conflict**: future reserved status for complex rule collisions.
-- **Pending sync**: phone saved the scan locally and backend has not accepted it yet.
-
-Volunteers should not override duplicate food or kit claims without an admin decision.
-
-## Dashboard Use
-
-The dashboard is meant for live operational decisions:
-
-- Registration total confirms imported/on-spot volume.
-- QR sent/unsent highlights communication gaps.
-- Accepted scans indicate attendance.
-- Food and kit counts help procurement teams.
-- Duplicate and denied counts reveal scanning issues.
-
-## End Of Event
-
-1. Ensure every scanner sync queue is empty.
-2. Export attendee and scan data if needed.
-3. Disable volunteer accounts.
-4. Back up PostgreSQL.
-5. Record incidents and improvements for the next event.
+## 7. Scanning & Audit
+Volunteers log in and open the **Scan QR Codes** tab. They select their station.
+- If offline, scans process instantly and queue in the background.
+- Scans respect **Scan Rules** (e.g. allowing only 1 scan for "food", or unlimited for "entry").
+- You can watch scans happen live in the **Scan rules** tab via the **Recent Scans** audit log.

@@ -1,56 +1,34 @@
-# Reg Desk V1 Product Plan
+# Product Implementation Plan
 
-## Goal
+All primary milestones for the V1 launch have been achieved.
 
-Reg Desk V1 gives an event team a reliable registration workflow from imported attendee data to live check-in statistics. The system must be simple enough for college club contributors to maintain, but strong enough to survive event-day realities: weak internet, last-minute registrations, duplicate scans, QR email failures, and multiple volunteers scanning at once.
+## Phase 1: Foundation (COMPLETED)
+- [x] Monorepo setup (Vite + Express).
+- [x] PostgreSQL schema migrations.
+- [x] JWT Auth and Role isolation.
 
-## V1 Scope
+## Phase 2: Operations (COMPLETED)
+- [x] Excel data import & duplicates handling.
+- [x] Dynamic Form Builder (JSONB Metadata).
+- [x] Global Branding Engine.
+- [x] Public Registrations & Ticket Transfer Queue.
+- [x] Advanced Volunteer Roles (Categories + Scope Overrides).
 
-- Browser-based admin and volunteer experience.
-- PostgreSQL as the authoritative event database.
-- Excel import and on-spot registration.
-- Encrypted QR generation.
-- SMTP QR delivery with CSV export fallback.
-- Mobile-browser QR scanning.
-- Offline scan queue with later sync.
-- Dynamic rules for entry, food, kit, and custom checkpoints.
-- Live operational dashboard.
-- Documentation-first project structure.
+## Phase 3: QR & Distribution (COMPLETED)
+- [x] AES-GCM encrypted QR payloads.
+- [x] SMTP batch sending with dynamic HTML templates.
+- [x] CSV fallback export.
 
-## Out Of Scope For V1
+## Phase 4: Mobile Scanner (COMPLETED)
+- [x] Html5-Qrcode camera integration.
+- [x] Offline scanning with IndexedDB/Local storage fallback.
+- [x] Conflict-free syncing endpoint.
+- [x] PWA configurations (`manifest.webmanifest`, PNG icons, `sw.js` cache) for Android/iOS native installation.
 
-- Native Android/iOS scanner app.
-- Biometric identity verification.
-- Payment collection.
-- Multi-event tenant administration.
-- Fully automated WhatsApp delivery.
-- Complex visual form builder.
+## Phase 5: Live Analytics (COMPLETED)
+- [x] Real-time Dashboard metrics.
+- [x] Real-time Scan History log in Admin view.
 
-These are intentionally deferred so the first version can be deployed and tested quickly.
-
-## Primary User Roles
-
-- **Admin**: imports data, registers attendees, generates QR codes, sends batches, manages volunteers, configures rules, watches dashboard stats.
-- **Volunteer**: logs in from a phone, selects or receives a station context, scans QR codes, sees immediate accepted/duplicate/denied/conflict feedback.
-- **Organizer**: watches aggregate statistics and handles operational decisions such as food counts or kit stock.
-
-## Success Criteria
-
-- A team can import an Excel file and see validation errors before committing data.
-- An attendee can be registered on spot and receive a QR code.
-- QR codes do not contain readable attendee data.
-- Volunteers can scan from a browser without installing an app.
-- Offline scans are not lost.
-- Duplicate entry, food, or kit claims are prevented.
-- Admins can export QR data if SMTP breaks.
-- Dashboard counts are accurate enough for live event decisions.
-
-## Future Enhancements
-
-- Native mobile scanner app using the same scan sync API.
-- WhatsApp provider integration.
-- Role-specific dashboards.
-- Multi-event support.
-- Configurable registration forms.
-- Richer eligibility rules for workshops, tracks, and paid add-ons.
-- Admin UI for key rotation and emergency revocation.
+## Future / Ongoing Work
+- IP Rate limiting on Public Endpoints (Vercel Edge / Upstash).
+- Expanded reporting and export pipelines.

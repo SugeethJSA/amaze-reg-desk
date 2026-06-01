@@ -1,60 +1,31 @@
-# QR Security
+# QR Code Security & Workflows
 
-## Security Goal
+Amaze Reg Desk utilizes a zero-knowledge QR payload design to prevent unauthorized data scraping and duplication.
 
-QR codes must not expose plain attendee data. Someone viewing the QR payload should not be able to read the attendee name, email, or registration identifier without authorized key material.
+## Threat Model
 
-## Payload Format
+1. **Attendee data leak**: If an attendee's QR code is intercepted, the attacker should not be able to read personal information (Name, Email, Phone, Custom Fields).
+2. **QR Forgery**: An attacker should not be able to generate a valid QR code without database access.
+3. **Ticket Duplication**: If an attendee shares their QR code, the system must enforce usage rules to prevent multi-entry.
 
-V1 QR payloads use this shape:
+## Defenses
 
-```text
-v1.<iv>.<authTag>.<ciphertext>
-```
+### 1. AES-256-GCM Encryption
+Instead of embedding raw JSON or UUIDs in the QR code, the backend constructs a minimal payload (e.g. `{ "id": "uuid-here" }`) and encrypts it using `AES-256-GCM`.
+- The encryption key is derived using a globally configured `QR_MASTER_SECRET`.
+- The resulting payload includes the Initialization Vector (IV), Ciphertext, and Authentication Tag.
+- The volunteer scanner app simply reads the base64 string and forwards it to the backend. The backend decrypts it. The scanner app never holds the decryption keys.
 
-The ciphertext is AES-256-GCM encrypted JSON. The plaintext contains minimum operational fields such as attendee ID, name, email, issue time, and batch ID. The API stores a SHA-256 hash of the final encrypted payload for lookup.
+### 2. Conflict-Resistant Syncing
+When a QR code is scanned:
+1. The scanner generates a `client_id` (a local UUID) for the scan event.
+2. The scanner sends `{ qrData, stationId, timestamp, clientId }` to `/api/scans/sync`.
+3. The backend decrypts `qrData` to get the `attendeeId`.
+4. The backend evaluates the `scan_rules` for the given `stationId`.
+5. If the rule prohibits multiple scans, the backend checks for existing accepted scans for this attendee and station.
+6. The database relies on a `UNIQUE(client_id)` constraint on `scan_events` to gracefully handle network retries (idempotency).
 
-## Encryption
-
-The server derives an AES-256-GCM key from `QR_MASTER_SECRET`. The derived key encrypts QR payloads during generation and decrypts them when server-side inspection is needed.
-
-For browser scanning, V1 gives the authenticated volunteer session a QR decrypt key after login. The scanner can decrypt the payload locally while offline, then stores the encrypted payload and hash for later sync. The final scan decision still happens on the server.
-
-## Offline Behavior
-
-Offline scans store:
-
-- Local scan UUID.
-- Encrypted QR payload.
-- QR payload hash.
-- Station context.
-- Device ID.
-- Scan timestamp.
-
-The phone can decrypt QR details while offline, but it does not mark scans as finally accepted while offline. It displays pending sync state. When the connection returns, the queued scans are synced to the backend, which resolves rules and conflicts.
-
-## Volunteer Keys
-
-Volunteer accounts have associated key metadata:
-
-- Station permissions.
-- Public hint/label.
-- Revocation timestamp.
-
-In V1, the login response supplies authorized scanner key material to the browser session. The `volunteer_keys` table models station permissions and revocation metadata. A hardened deployment can extend this by encrypting station-specific QR data for volunteer-held public keys instead of using a shared event decrypt key.
-
-## Revocation Limitations
-
-Offline capability always has a revocation tradeoff. If a volunteer has already loaded scanner permissions and then loses internet, the server cannot instantly revoke that phone until it reconnects. For this reason:
-
-- Final acceptance remains server-authoritative.
-- Offline scans are pending, not final.
-- Admins should revoke accounts before event gates open when possible.
-- Volunteers should sync before changing station assignments.
-
-## What QR Codes Do Not Do
-
-- They do not store plain attendee data.
-- They do not grant final access without backend verification.
-- They do not bypass duplicate prevention.
-- They do not replace volunteer authentication.
+### 3. Dynamic QR Dispatch
+QR codes are not stored as images on the server. They are generated in memory and embedded directly into the email body as inline attachments (CIDs).
+- The `{{qr_code_image}}` tag in the Email Template is dynamically replaced with an `img src="cid:qrcode"` pointing to the generated attachment.
+- This ensures QR codes are never publicly accessible via a URL.

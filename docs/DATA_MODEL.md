@@ -1,111 +1,67 @@
 # Data Model
 
-## Core Entities
+The data layer uses PostgreSQL, relying on `JSONB` for extensibility where strict schema bindings are unnecessary (such as dynamically generated form fields).
+
+## Schema Overview
+
+### `system_settings`
+Global key-value configuration.
+- `setting_key` (TEXT PK): e.g. `app_name`, `primary_color`, `public_registrations_enabled`.
+- `setting_value` (TEXT): The stored string configuration.
+
+### `form_fields`
+Powers the dynamic form builder.
+- `id` (UUID PK)
+- `field_key` (TEXT UNIQUE): Used to map to `attendees.metadata`.
+- `label`, `field_type`, `options`, `required`, `active`, `show_in_list`
+- `order_index` (INT)
+
+### `user_categories`
+Roles/Groups for volunteers.
+- `id` (UUID PK)
+- `name` (TEXT)
+- `color` (TEXT): For UI badges.
+- `stations` (TEXT): Comma-separated list of scopes (e.g. `entry,food`).
 
 ### `users`
-
-Stores admin and volunteer accounts. Admins can import data, configure rules, and send QR batches. Volunteers scan QR codes from mobile browsers.
-
-Important fields:
-
-- `role`: `admin` or `volunteer`.
-- `active`: disables accounts without deleting audit history.
-
-### `volunteer_keys`
-
-Stores volunteer key metadata and station permissions. V1 uses a shared server-side QR encryption secret, but the table models key lifecycle and revocation so role-scoped key distribution can be hardened over time.
-
-Important fields:
-
-- `station_permissions`: allowed station types.
-- `revoked_at`: disables a volunteer key.
+Administrators and Volunteers.
+- `id` (UUID PK)
+- `email` (TEXT UNIQUE)
+- `password_hash` (TEXT)
+- `role` (TEXT): `admin` or `volunteer`
+- `category_id` (UUID FK): Links to `user_categories`.
+- `stations` (TEXT): Optional override scopes for the user.
 
 ### `attendees`
-
-Stores imported and on-spot registrations.
-
-Important fields:
-
-- `email`: unique attendee identity in V1.
-- `registered_on_spot`: distinguishes manual registrations.
-- `metadata`: stores import context or future custom fields.
-
-### `registration_form_fields`
-
-Defines admin-configurable fields that appear on the on-spot registration form.
-
-Important fields:
-
-- `field_key`: stable metadata key used when storing attendee custom values.
-- `field_type`: `text`, `email`, `phone`, `number`, `select`, `textarea`, or `checkbox`.
-- `required`: controls browser-side required validation.
-- `options`: select choices stored as JSON.
-- `sort_order`: controls display order.
-- `active`: hides a field without deleting stored attendee metadata.
-
-### `import_batches`
-
-Records Excel imports and summary counts.
-
-### `qr_batches`
-
-Groups generated QR codes for sending and auditing.
+Event attendees.
+- `id` (UUID PK)
+- `name`, `email` (UNIQUE), `phone`, `college`, `department`
+- `metadata` (JSONB): Core extensibility node. Holds custom dynamic fields from `form_fields`, `verificationStatus` (pending/approved), `paymentProof` (base64 image), and `transferredFrom` (UUID).
+- `registered_on_spot` (BOOLEAN)
 
 ### `qr_codes`
-
-Stores encrypted QR payloads.
-
-Important fields:
-
-- `encrypted_payload`: QR content shown to attendee.
-- `payload_hash`: stable SHA-256 hash used for lookup and conflict checks.
-- `sent_at`: marks successful delivery.
-- Unique `attendee_id`: one active QR code per attendee in V1.
-
-### `email_send_attempts`
-
-Logs every SMTP attempt and failed fallback condition.
-
-Important fields:
-
-- `status`: `pending`, `sent`, `failed`, or `exported`.
-- `error_message`: operational reason for failure.
+Encrypted QR codes tied to attendees.
+- `id` (UUID PK)
+- `attendee_id` (UUID FK)
+- `payload_iv` (TEXT): Base64 initialization vector for AES.
+- `payload_data` (TEXT): Base64 encrypted cipher text.
+- `payload_auth_tag` (TEXT): Base64 auth tag.
+- `batch_id` (UUID): Used for grouped email campaigns.
+- `sent_at` (TIMESTAMPTZ): Marks successful dispatch.
 
 ### `scan_rules`
-
-Defines station behavior.
-
-Rule examples:
-
-- Entry check-in from 09:00 to 10:30.
-- Food claim during lunch window.
-- Kit collection from a custom desk.
+Operational rules enforced by scanners.
+- `id` (UUID PK)
+- `station_id` (TEXT): e.g. `entry` or `day-1-food`.
+- `allow_multiple` (BOOLEAN): Can they scan twice?
+- `allowed_categories` (TEXT[]): Optional group restrictions.
 
 ### `scan_events`
-
-Records every scan result.
-
-Important constraints:
-
-- Unique `local_scan_id` makes offline sync idempotent.
-- Partial unique constraint on `(qr_payload_hash, station, rule_id)` for accepted scans prevents duplicate claims for the same station/rule.
-
-### `offline_sync_records`
-
-Tracks queued scan sync results by device and local scan ID.
-
-### `audit_logs`
-
-Captures administrative and operational actions for later review.
-
-## Conflict Prevention
-
-Reg Desk prevents duplicate and conflicting actions in layers:
-
-1. The browser creates a unique `localScanId` for every scan.
-2. The API rejects or reuses previously synced `localScanId` values.
-3. The API looks up QR codes by `payload_hash`.
-4. PostgreSQL prevents multiple accepted scans for the same QR/station/rule.
-5. The API records duplicate attempts instead of silently dropping them.
-
-This makes retrying offline scans safe. A volunteer can press sync again without accidentally creating multiple accepted claims.
+Immutable audit log of all scans.
+- `id` (UUID PK)
+- `qr_code_id` (UUID FK)
+- `volunteer_id` (UUID FK)
+- `station_id` (TEXT)
+- `client_timestamp` (TIMESTAMPTZ)
+- `status` (TEXT): `accepted` or `denied`
+- `client_id` (TEXT UNIQUE): Prevents duplicate syncs.
