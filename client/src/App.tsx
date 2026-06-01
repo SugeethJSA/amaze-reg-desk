@@ -5,7 +5,7 @@ import { API_URL, api, getSession, setSession, type Session } from "./api";
 import { decryptQrPayload, hasEncryptedQrShape, hashPayload } from "./crypto";
 import { deviceId, enqueueScan, flushScans, listQueuedScans } from "./offlineQueue";
 
-type View = "dashboard" | "admin" | "scanner";
+type View = "dashboard" | "admin" | "scanner" | "account";
 type Station = "entry" | "food" | "kit" | "custom";
 type AdminTab = "registrations" | "form" | "qr" | "rules" | "users" | "verification" | "branding";
 type UserRow = {
@@ -130,7 +130,6 @@ export function App() {
   const [view, setView] = useState<View>("dashboard");
   const [publicView, setPublicView] = useState<"login" | "register" | "transfer">("login");
   const [globalSettings, setGlobalSettings] = useState<Record<string, string>>({});
-  const [showAccountModal, setShowAccountModal] = useState(false);
 
   useEffect(() => {
     api<{ settings: Record<string, string> }>("/settings").then((res) => {
@@ -186,7 +185,7 @@ export function App() {
           </nav>
         )}
         <div className="account-bar" style={{ display: "flex", gap: "8px" }}>
-          <button className="icon-button" aria-label="Account" title="Account" onClick={() => setShowAccountModal(true)}>
+          <button className={view === "account" ? "icon-button active" : "icon-button"} aria-label="Account" title="Account" onClick={() => setView("account")}>
             <User size={18} />
           </button>
           <button className="icon-button" aria-label="Sign out" title="Sign out" onClick={() => {
@@ -199,23 +198,13 @@ export function App() {
         {view === "dashboard" && <Dashboard />}
         {view === "admin" && <Admin globalSettings={globalSettings} />}
         {view === "scanner" && <VolunteerWorkstation session={session} globalSettings={globalSettings} />}
+        {view === "account" && <AccountPage session={session} onLogout={() => { setSession(null); setSessionState(null); }} />}
       </main>
-      
-      {showAccountModal && (
-        <AccountModal 
-          session={session} 
-          onClose={() => setShowAccountModal(false)} 
-          onLogout={() => {
-            setSession(null);
-            setSessionState(null);
-          }} 
-        />
-      )}
     </div>
   );
 }
 
-function AccountModal({ session, onClose, onLogout }: { session: Session, onClose: () => void, onLogout: () => void }) {
+function AccountPage({ session, onLogout }: { session: Session, onLogout: () => void }) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -236,12 +225,11 @@ function AccountModal({ session, onClose, onLogout }: { session: Session, onClos
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="panel-header">
-          <h3>Account details</h3>
-          <button className="icon-button" onClick={onClose}><X size={16} /></button>
-        </div>
+    <div className="panel" style={{ maxWidth: 600, margin: "20px auto" }}>
+      <div className="panel-header">
+        <h3>Account details</h3>
+      </div>
+      <div className="content-pad">
         <div className="form-grid" style={{ marginBottom: 20 }}>
           <label>Name<input value={session.user.name} disabled /></label>
           <label>Role<input value={session.user.role} disabled /></label>
@@ -257,7 +245,7 @@ function AccountModal({ session, onClose, onLogout }: { session: Session, onClos
             <button type="submit">Update password</button>
           </div>
         </form>
-        <hr style={{ margin: "20px 0", borderTop: "1px solid var(--color-border)" }} />
+        <hr style={{ margin: "30px 0 20px 0", borderTop: "1px solid var(--color-border)" }} />
         <div style={{ display: "flex", justifyContent: "center" }}>
           <button type="button" className="danger-button" onClick={onLogout}><LogOut size={16} style={{ marginRight: 8 }} /> Sign out entirely</button>
         </div>

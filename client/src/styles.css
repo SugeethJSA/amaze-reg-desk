@@ -1643,10 +1643,11 @@ tbody tr:hover {
 
 @media (max-width: 768px) {
   .app-header {
-    grid-template-columns: 1fr;
-    gap: 12px;
-    padding: 14px 20px;
-    text-align: center;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    padding: 12px 16px;
+    gap: 8px;
   }
 
   .top-nav {
