@@ -2,6 +2,7 @@ import { Activity, Camera, CameraOff, Download, Edit3, LogOut, Plus, QrCode, Ref
 import { Html5Qrcode } from "html5-qrcode";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { API_URL, api, getSession, setSession, type Session } from "./api";
+import { Analytics } from "@vercel/analytics/react";
 import { decryptQrPayload, hasEncryptedQrShape, hashPayload } from "./crypto";
 import { deviceId, enqueueScan, flushScans, listQueuedScans } from "./offlineQueue";
 
@@ -91,64 +92,70 @@ export function App() {
 
   if (!session) {
     if (publicView === "register" && globalSettings.public_registrations_enabled !== "false") {
-      return <PublicRegister onBack={() => setPublicView("login")} globalSettings={globalSettings} />;
+      return (<><Analytics /><PublicRegister onBack={() => setPublicView("login")} globalSettings={globalSettings} /></>);
     }
     if (publicView === "transfer" && globalSettings.public_transfers_enabled !== "false") {
-      return <PublicTransfer onBack={() => setPublicView("login")} globalSettings={globalSettings} />;
+      return (<><Analytics /><PublicTransfer onBack={() => setPublicView("login")} globalSettings={globalSettings} /></>);
     }
     return (
-      <Login
-        globalSettings={globalSettings}
-        onLogin={(next) => {
-          setSession(next);
-          setSessionState(next);
-        }}
-        onNavigateRegister={() => setPublicView("register")}
-        onNavigateTransfer={() => setPublicView("transfer")}
-      />
+      <>
+        <Analytics />
+        <Login
+          globalSettings={globalSettings}
+          onLogin={(next) => {
+            setSession(next);
+            setSessionState(next);
+          }}
+          onNavigateRegister={() => setPublicView("register")}
+          onNavigateTransfer={() => setPublicView("transfer")}
+        />
+      </>
     );
   }
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <div className="brand">
-          {globalSettings.logo_url ? (
-            <img src={globalSettings.logo_url} alt="Logo" style={{ width: 32, height: 32, borderRadius: 6, objectFit: "contain" }} />
-          ) : (
-            <span className="brand-mark">{globalSettings.app_name ? globalSettings.app_name.charAt(0) : "A"}</span>
-          )}
-          <div>
-            <p className="eyebrow">{globalSettings.event_name || "Amaze"}</p>
-            <h1>{globalSettings.app_name || "Reg Desk"}</h1>
+    <>
+      <Analytics />
+      <div className="app-shell">
+        <header className="app-header">
+          <div className="brand">
+            {globalSettings.logo_url ? (
+              <img src={globalSettings.logo_url} alt="Logo" style={{ width: 32, height: 32, borderRadius: 6, objectFit: "contain" }} />
+            ) : (
+              <span className="brand-mark">{globalSettings.app_name ? globalSettings.app_name.charAt(0) : "A"}</span>
+            )}
+            <div>
+              <p className="eyebrow">{globalSettings.event_name || "Amaze"}</p>
+              <h1>{globalSettings.app_name || "Reg Desk"}</h1>
+            </div>
           </div>
-        </div>
-        <nav className="top-nav">
-          {session.user.role === "admin" && (
-            <>
-              <button className={view === "dashboard" ? "active" : ""} onClick={() => setView("dashboard")}><Activity size={18} /> Dashboard</button>
-              <button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}><Users size={18} /> Admin</button>
-            </>
-          )}
-          <button className={view === "scanner" ? "active" : ""} onClick={() => setView("scanner")}><QrCode size={18} /> Volunteer Workstation</button>
-        </nav>
-        <div className="account-bar">
-          <div>
-            <p className="eyebrow">Signed in as {session.user.role}</p>
-            <strong>{session.user.name}</strong>
+          <nav className="top-nav">
+            {session.user.role === "admin" && (
+              <>
+                <button className={view === "dashboard" ? "active" : ""} onClick={() => setView("dashboard")}><Activity size={18} /> Dashboard</button>
+                <button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}><Users size={18} /> Admin</button>
+              </>
+            )}
+            <button className={view === "scanner" ? "active" : ""} onClick={() => setView("scanner")}><QrCode size={18} /> Volunteer Workstation</button>
+          </nav>
+          <div className="account-bar">
+            <div>
+              <p className="eyebrow">Signed in as {session.user.role}</p>
+              <strong>{session.user.name}</strong>
+            </div>
+            <button className="icon-button" aria-label="Sign out" title="Sign out" onClick={() => {
+              setSession(null);
+              setSessionState(null);
+            }}><LogOut size={18} /></button>
           </div>
-          <button className="icon-button" aria-label="Sign out" title="Sign out" onClick={() => {
-            setSession(null);
-            setSessionState(null);
-          }}><LogOut size={18} /></button>
-        </div>
-      </header>
-      <main className="content">
-        {view === "dashboard" && <Dashboard />}
-        {view === "admin" && <Admin />}
-        {view === "scanner" && <VolunteerWorkstation session={session} />}
-      </main>
-    </div>
+        </header>
+        <main className="content">
+          {view === "dashboard" && <Dashboard />}
+          {view === "admin" && <Admin />}
+          {view === "scanner" && <VolunteerWorkstation session={session} />}
+        </main>
+      </div>
+    </>
   );
 }
 
