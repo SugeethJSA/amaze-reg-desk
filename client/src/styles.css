@@ -1737,6 +1737,7 @@ tbody tr:hover {
     justify-content: space-around;
     padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
     gap: 4px;
+    border-radius: 0;
     box-shadow: 0 -4px 12px rgba(0,0,0,0.25);
   }
 

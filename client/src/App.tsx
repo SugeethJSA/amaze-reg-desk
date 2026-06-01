@@ -514,8 +514,39 @@ function CustomFieldBreakdownPanel({ breakdown }: { breakdown: CustomFieldBreakd
   );
 }
 
+function useSwipeTabs<T extends string>(tabs: T[], currentTab: T, setTab: (tab: T) => void) {
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    if ((e.target as HTMLElement).closest('.table-wrap, table, input, textarea, select')) return;
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if ((e.target as HTMLElement).closest('.table-wrap, table, input, textarea, select')) return;
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+    const currentIndex = tabs.indexOf(currentTab);
+    
+    if (isLeftSwipe && currentIndex < tabs.length - 1) setTab(tabs[currentIndex + 1]);
+    if (isRightSwipe && currentIndex > 0) setTab(tabs[currentIndex - 1]);
+  };
+
+  return { onTouchStart, onTouchMove, onTouchEnd };
+}
+
 function Admin({ globalSettings }: { globalSettings: Record<string, string> }) {
   const [tab, setTab] = useState<AdminTab>("registrations");
+  const adminTabs: AdminTab[] = ["registrations", "form", "qr", "rules", "users", "verification", "branding"];
+  const swipeHandlers = useSwipeTabs(adminTabs, tab, setTab);
   const [file, setFile] = useState<File | null>(null);
   const [message, setMessage] = useState("");
   const [attendees, setAttendees] = useState<any[]>([]);
@@ -906,7 +937,7 @@ function Admin({ globalSettings }: { globalSettings: Record<string, string> }) {
   };
 
   return (
-    <section className="admin-workspace">
+    <section className="admin-workspace" {...swipeHandlers}>
       <div className="section-title">
         <div>
           <p className="eyebrow">Admin desk</p>
@@ -1861,6 +1892,11 @@ function VerificationQueue({
 // Volunteer Workstation Component containing sub-views
 function VolunteerWorkstation({ session, globalSettings }: { session: Session; globalSettings: Record<string, string>; }) {
   const [tab, setTab] = useState<"scanner" | "database" | "verification" | "onspot">("scanner");
+  const volunteerTabs: ("scanner" | "database" | "verification" | "onspot")[] = 
+    globalSettings.volunteer_onspot_enabled !== "false" 
+      ? ["scanner", "database", "verification", "onspot"]
+      : ["scanner", "database", "verification"];
+  const swipeHandlers = useSwipeTabs(volunteerTabs, tab, setTab);
   const [fields, setFields] = useState<FormField[]>([]);
   const [attendees, setAttendees] = useState<any[]>([]);
   const [message, setMessage] = useState("");
@@ -1889,7 +1925,7 @@ function VolunteerWorkstation({ session, globalSettings }: { session: Session; g
   }, []);
 
   return (
-    <section className="stack">
+    <section className="stack" {...swipeHandlers}>
       {message && <p className="notice">{message}</p>}
       <nav className="admin-tabs">
         <button className={tab === "scanner" ? "active" : ""} onClick={() => setTab("scanner")}><QrCode size={16} /> Scan QR Codes</button>
