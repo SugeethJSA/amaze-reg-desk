@@ -50,7 +50,17 @@ type FormField = {
   sortOrder: number;
   active: boolean;
   showInList: boolean;
+  dependsOnField?: string;
+  dependsOnValue?: string;
 };
+
+function isFieldVisible(field: FormField, allFields: FormField[], formValues: Record<string, any>): boolean {
+  if (!field.dependsOnField) return true;
+  const parentField = allFields.find(f => f.fieldKey === field.dependsOnField);
+  if (!parentField) return true;
+  if (!isFieldVisible(parentField, allFields, formValues)) return false;
+  return formValues[field.dependsOnField] === field.dependsOnValue;
+}
 
 // Fallback dynamic fields to ensure unseeded systems load perfectly
 const DEFAULT_FIELDS: FormField[] = [
@@ -467,7 +477,9 @@ function Admin() {
     options: "",
     sortOrder: 0,
     active: true,
-    showInList: false
+    showInList: false,
+    dependsOnField: "",
+    dependsOnValue: ""
   });
   const [ruleForm, setRuleForm] = useState({ name: "", station: "entry", startsAt: "", endsAt: "" });
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -543,7 +555,7 @@ function Admin() {
 
   function startNewField() {
     setEditingFieldId(null);
-    setFieldForm({ fieldKey: "", label: "", fieldType: "text", required: false, options: "", sortOrder: fields.length + 1, active: true, showInList: false });
+    setFieldForm({ fieldKey: "", label: "", fieldType: "text", required: false, options: "", sortOrder: fields.length + 1, active: true, showInList: false, dependsOnField: "", dependsOnValue: "" });
   }
 
   function editField(field: FormField) {
@@ -556,7 +568,9 @@ function Admin() {
       options: field.options.join(", "),
       sortOrder: field.sortOrder,
       active: field.active,
-      showInList: field.showInList || false
+      showInList: field.showInList || false,
+      dependsOnField: field.dependsOnField || "",
+      dependsOnValue: field.dependsOnValue || ""
     });
     setTab("form");
   }
@@ -917,6 +931,21 @@ function Admin() {
               <label><input type="checkbox" checked={fieldForm.active} onChange={(event) => setFieldForm({ ...fieldForm, active: event.target.checked })} /> Active</label>
               <label><input type="checkbox" checked={fieldForm.showInList} onChange={(event) => setFieldForm({ ...fieldForm, showInList: event.target.checked })} /> Show in list</label>
             </div>
+            <div className="check-row" style={{ marginTop: "8px", gap: "16px" }}>
+              <label style={{ flex: 1 }}>Depends on Field:
+                <select value={fieldForm.dependsOnField || ""} onChange={(e) => setFieldForm({ ...fieldForm, dependsOnField: e.target.value })}>
+                  <option value="">(None)</option>
+                  {fields.filter(f => f.id !== editingFieldId).map(f => (
+                    <option key={f.id} value={f.fieldKey}>{f.label} ({f.fieldKey})</option>
+                  ))}
+                </select>
+              </label>
+              {fieldForm.dependsOnField && (
+                <label style={{ flex: 1 }}>Required Value:
+                  <input value={fieldForm.dependsOnValue || ""} onChange={(e) => setFieldForm({ ...fieldForm, dependsOnValue: e.target.value })} placeholder="Yes" />
+                </label>
+              )}
+            </div>
             <button type="submit">{editingFieldId ? <Save size={16} /> : <Plus size={16} />} {editingFieldId ? "Update field" : "Add field"}</button>
           </form>
           <div className="panel wide-panel">
@@ -1196,6 +1225,20 @@ function OnSpotForm({
     return fields.filter((f) => f.active);
   }, [fields]);
 
+  useEffect(() => {
+    let changed = false;
+    const newValues = { ...values };
+    activeFields.forEach(field => {
+      if (!isFieldVisible(field, activeFields, values)) {
+        if (newValues[field.fieldKey] !== undefined && newValues[field.fieldKey] !== "") {
+          newValues[field.fieldKey] = "";
+          changed = true;
+        }
+      }
+    });
+    if (changed) setValues(newValues);
+  }, [values, activeFields]);
+
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (file) {
@@ -1256,7 +1299,7 @@ function OnSpotForm({
       {message && <p className="notice">{message}</p>}
       {error && <p className="error">{error}</p>}
       <div className="form-grid">
-        {activeFields.map((field) => (
+        {activeFields.filter(f => isFieldVisible(f, activeFields, values)).map((field) => (
           <DynamicField
             key={field.id}
             field={field}
@@ -1320,6 +1363,20 @@ function PublicTransfer({ onBack, globalSettings }: { onBack: () => void; global
     }
     return fields.filter((f) => f.active);
   }, [fields]);
+
+  useEffect(() => {
+    let changed = false;
+    const newValues = { ...recipientValues };
+    activeFields.forEach(field => {
+      if (!isFieldVisible(field, activeFields, recipientValues)) {
+        if (newValues[field.fieldKey] !== undefined && newValues[field.fieldKey] !== "") {
+          newValues[field.fieldKey] = "";
+          changed = true;
+        }
+      }
+    });
+    if (changed) setRecipientValues(newValues);
+  }, [recipientValues, activeFields]);
 
   useEffect(() => {
     api<{ fields: FormField[] }>("/form-fields/public")
@@ -1400,7 +1457,7 @@ function PublicTransfer({ onBack, globalSettings }: { onBack: () => void; global
 
           <h4 style={{ margin: "14px 0 0", fontSize: "14px", fontWeight: "800" }}>Recipient Registration Details</h4>
           <div className="form-grid">
-            {activeFields.map((field) => (
+            {activeFields.filter(f => isFieldVisible(f, activeFields, recipientValues)).map((field) => (
               <DynamicField
                 key={field.id}
                 field={field}

@@ -37,7 +37,7 @@ export async function sendQrEmail(input: {
   let html = input.bodyTemplate || defaultBody;
 
   // Prepare template variables
-  const templateVars = {
+  const templateVars: Record<string, any> = {
     ...input.variables,
     qr_code_image: '<img src="cid:qrcode" alt="Event QR code" style="max-width: 260px; height: auto;" />'
   };

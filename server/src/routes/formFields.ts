@@ -15,7 +15,9 @@ const FieldSchema = z.object({
   sortOrder: z.coerce.number().int().default(0),
   active: z.boolean().default(true),
   showInList: z.boolean().default(false),
-  isSystem: z.boolean().default(false)
+  isSystem: z.boolean().default(false),
+  dependsOnField: z.string().nullable().optional(),
+  dependsOnValue: z.string().nullable().optional()
 });
 
 // Public endpoint — no auth required — used by PublicRegister & PublicTransfer pages
@@ -31,7 +33,9 @@ formFieldsRouter.get("/public", async (_req, res, next) => {
               sort_order AS "sortOrder",
               active,
               show_in_list AS "showInList",
-              is_system AS "isSystem"
+              is_system AS "isSystem",
+              depends_on_field AS "dependsOnField",
+              depends_on_value AS "dependsOnValue"
          FROM registration_form_fields
         WHERE active = TRUE
         ORDER BY sort_order ASC, label ASC`
@@ -55,6 +59,8 @@ formFieldsRouter.get("/", requireAuth, async (_req, res, next) => {
               active,
               show_in_list AS "showInList",
               is_system AS "isSystem",
+              depends_on_field AS "dependsOnField",
+              depends_on_value AS "dependsOnValue",
               created_at AS "createdAt",
               updated_at AS "updatedAt"
          FROM registration_form_fields
@@ -71,8 +77,8 @@ formFieldsRouter.post("/", requireAuth, requireAdmin, async (req, res, next) => 
     const input = FieldSchema.parse(req.body);
     const result = await pool.query(
       `INSERT INTO registration_form_fields
-         (field_key, label, field_type, required, options, sort_order, active, show_in_list, is_system)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         (field_key, label, field_type, required, options, sort_order, active, show_in_list, is_system, depends_on_field, depends_on_value)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING id,
                  field_key AS "fieldKey",
                  label,
@@ -82,8 +88,10 @@ formFieldsRouter.post("/", requireAuth, requireAdmin, async (req, res, next) => 
                  sort_order AS "sortOrder",
                  active,
                  show_in_list AS "showInList",
-                 is_system AS "isSystem"`,
-      [input.fieldKey, input.label, input.fieldType, input.required, JSON.stringify(input.options), input.sortOrder, input.active, input.showInList, false]
+                 is_system AS "isSystem",
+                 depends_on_field AS "dependsOnField",
+                 depends_on_value AS "dependsOnValue"`,
+      [input.fieldKey, input.label, input.fieldType, input.required, JSON.stringify(input.options), input.sortOrder, input.active, input.showInList, false, input.dependsOnField || null, input.dependsOnValue || null]
     );
     res.status(201).json({ field: result.rows[0] });
   } catch (error) {
@@ -110,6 +118,8 @@ formFieldsRouter.put("/:id", requireAuth, requireAdmin, async (req, res, next) =
               sort_order = $7,
               active = $8,
               show_in_list = $9,
+              depends_on_field = $10,
+              depends_on_value = $11,
               updated_at = now()
         WHERE id = $1
         RETURNING id,
@@ -121,8 +131,10 @@ formFieldsRouter.put("/:id", requireAuth, requireAdmin, async (req, res, next) =
                   sort_order AS "sortOrder",
                   active,
                   show_in_list AS "showInList",
-                  is_system AS "isSystem"`,
-      [req.params.id, input.fieldKey, input.label, input.fieldType, input.required, JSON.stringify(input.options), input.sortOrder, input.active, input.showInList]
+                  is_system AS "isSystem",
+                  depends_on_field AS "dependsOnField",
+                  depends_on_value AS "dependsOnValue"`,
+      [req.params.id, input.fieldKey, input.label, input.fieldType, input.required, JSON.stringify(input.options), input.sortOrder, input.active, input.showInList, input.dependsOnField || null, input.dependsOnValue || null]
     );
     return res.json({ field: result.rows[0] });
   } catch (error) {
