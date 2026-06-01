@@ -164,7 +164,7 @@ export function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${session.user.role === "admin" ? "has-top-nav" : ""}`}>
       <header className="app-header">
         <div className="brand">
           {globalSettings.logo_url ? (
@@ -177,15 +177,13 @@ export function App() {
             <h1>{globalSettings.app_name || "Reg Desk"}</h1>
           </div>
         </div>
-        <nav className="top-nav">
-          {session.user.role === "admin" && (
-            <>
-              <button className={view === "dashboard" ? "active" : ""} onClick={() => setView("dashboard")}><Activity size={18} /> Dashboard</button>
-              <button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}><Users size={18} /> Admin</button>
-            </>
-          )}
-          <button className={view === "scanner" ? "active" : ""} onClick={() => setView("scanner")}><QrCode size={18} /> Volunteer Workstation</button>
-        </nav>
+        {session.user.role === "admin" && (
+          <nav className="top-nav">
+            <button className={view === "dashboard" ? "active" : ""} onClick={() => setView("dashboard")}><Activity size={18} /> Dashboard</button>
+            <button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}><Users size={18} /> Admin</button>
+            <button className={view === "scanner" ? "active" : ""} onClick={() => setView("scanner")}><QrCode size={18} /> Volunteer Workstation</button>
+          </nav>
+        )}
         <div className="account-bar">
           <div>
             <p className="eyebrow">Signed in as {session.user.role}</p>

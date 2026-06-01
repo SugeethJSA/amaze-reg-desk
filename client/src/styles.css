@@ -1727,18 +1727,46 @@ tbody tr:hover {
   }
 
   .top-nav {
-    gap: 2px;
-    padding: 3px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--color-brand-bg);
+    z-index: 120;
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+    gap: 4px;
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.25);
   }
 
   .top-nav button {
+    flex-direction: column;
     font-size: 11px;
-    padding: 0 12px;
-    min-height: 34px;
+    padding: 6px 4px;
+    min-height: auto;
+    border-radius: 8px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.6);
+    flex: 1;
+    gap: 4px;
+  }
+  
+  .top-nav button.active {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+  }
+  
+  .has-top-nav .content {
+    padding-bottom: 140px !important;
   }
 
   .content {
     padding-bottom: 70px !important;
+  }
+
+  .has-top-nav .admin-tabs {
+    bottom: 60px;
   }
 
   .admin-tabs {
