@@ -1,4 +1,4 @@
-import { Activity, Camera, CameraOff, Download, Edit3, LogOut, Plus, QrCode, RefreshCcw, Save, Send, ShieldCheck, Trash2, Upload, User, Users, X } from "lucide-react";
+import { Activity, Camera, CameraOff, Download, Edit3, LogOut, Menu, Plus, QrCode, RefreshCcw, Save, Search, Send, ShieldCheck, Trash2, Upload, User, Users, X, Check } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { API_URL, api, getSession, setSession, type Session } from "./api";
@@ -7,7 +7,7 @@ import { deviceId, enqueueScan, flushScans, listQueuedScans } from "./offlineQue
 
 type View = "dashboard" | "admin" | "scanner" | "account";
 type Station = "entry" | "food" | "kit" | "custom";
-type AdminTab = "registrations" | "form" | "qr" | "rules" | "users" | "verification" | "branding";
+type AdminTab = "registrations" | "form" | "qr" | "rules" | "users" | "categories" | "verification" | "branding";
 type UserRow = {
   id: string;
   name: string;
@@ -631,10 +631,11 @@ function useSwipeTabs<T extends string>(tabs: T[], currentTab: T, setTab: (tab: 
 
 function Admin({ globalSettings }: { globalSettings: Record<string, string> }) {
   const [tab, setTab] = useState<AdminTab>("registrations");
-  const adminTabs: AdminTab[] = ["registrations", "form", "qr", "rules", "users", "verification", "branding"];
+  const adminTabs: AdminTab[] = ["registrations", "form", "qr", "rules", "users", "categories", "verification", "branding"];
   const swipeHandlers = useSwipeTabs(adminTabs, tab, setTab);
   const [file, setFile] = useState<File | null>(null);
   const [message, setMessage] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
   const [attendees, setAttendees] = useState<any[]>([]);
   const [fields, setFields] = useState<FormField[]>([]);
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
@@ -658,7 +659,6 @@ function Admin({ globalSettings }: { globalSettings: Record<string, string> }) {
   const [scopes, setScopes] = useState<Station[]>(["entry", "food", "kit", "custom"]);
   const [categories, setCategories] = useState<UserCategory[]>([]);
   const [capabilityKeys, setCapabilityKeys] = useState<string[]>([]);
-  const [userSubTab, setUserSubTab] = useState<"users" | "categories">("users");
 
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [userForm, setUserForm] = useState({ name: "", email: "", password: "", role: "volunteer", active: true, stations: "entry", categoryId: "" });
@@ -1031,19 +1031,24 @@ function Admin({ globalSettings }: { globalSettings: Record<string, string> }) {
         </div>
       </div>
       {message && <p className="notice">{message}</p>}
-      <nav className="admin-tabs">
+      <button className="mobile-menu-toggle" onClick={() => setMenuOpen(!menuOpen)}>
+        {menuOpen ? <X size={24} /> : <Menu size={24} />}
+      </button>
+      <nav className={`admin-tabs ${menuOpen ? "open" : ""}`}>
         {[
           ["registrations", "Registrations"],
           ["form", "Form builder"],
           ["qr", "QR delivery"],
           ["rules", "Scan rules"],
           ["users", "Users"],
-          ["verification", "Verification Queue"],
-          ["branding", "Branding & Settings"]
+          ["categories", "Categories (Roles)"],
+          ["verification", "Verification"],
+          ["branding", "Branding & App Settings"]
         ].map(([id, label]) => (
-          <button key={id} className={tab === id ? "active" : ""} onClick={() => setTab(id as AdminTab)}>{label}</button>
+          <button key={id} className={tab === id ? "active" : ""} onClick={() => { setTab(id as AdminTab); setMenuOpen(false); }}>{label}</button>
         ))}
       </nav>
+      {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />}
 
       {tab === "branding" && <BrandingSettingsPanel />}
 
@@ -1083,7 +1088,7 @@ function Admin({ globalSettings }: { globalSettings: Record<string, string> }) {
                     const colorClass = avatarColors[index % 3];
                     return (
                       <tr key={attendee.id}>
-                        <td>
+                        <td data-label="Attendee">
                           <div className="avatar-container">
                             <div className={`avatar-circle ${colorClass}`}>{initials}</div>
                             <div className="attendee-info">
@@ -1092,11 +1097,11 @@ function Admin({ globalSettings }: { globalSettings: Record<string, string> }) {
                             </div>
                           </div>
                         </td>
-                        <td>{attendee.phone}</td>
-                        <td>{attendee.college}</td>
-                        <td>{attendee.department}</td>
-                        <td><span className={`status-badge ${(attendee.metadata?.verificationStatus ?? "verified")}`}>{attendee.metadata?.verificationStatus ?? "verified"}</span></td>
-                        <td><CustomFieldChips values={attendee.metadata?.customFields ?? {}} fields={fields} /></td>
+                        <td data-label="Phone" className={!attendee.phone ? "empty-cell" : ""}>{attendee.phone}</td>
+                        <td data-label="College" className={!attendee.college ? "empty-cell" : ""}>{attendee.college}</td>
+                        <td data-label="Department" className={!attendee.department ? "empty-cell" : ""}>{attendee.department}</td>
+                        <td data-label="Status"><span className={`status-badge ${(attendee.metadata?.verificationStatus ?? "verified")}`}>{attendee.metadata?.verificationStatus ?? "verified"}</span></td>
+                        <td data-label="Custom fields" className={!attendee.metadata?.customFields || Object.keys(attendee.metadata.customFields).length === 0 ? "empty-cell" : ""}><CustomFieldChips values={attendee.metadata?.customFields ?? {}} fields={fields} /></td>
                       </tr>
                     );
                   })}
@@ -1282,16 +1287,18 @@ function Admin({ globalSettings }: { globalSettings: Record<string, string> }) {
                     ) : (
                       scanRules.map(r => (
                         <tr key={r.id}>
-                          <td><strong>{r.name}</strong></td>
-                          <td><span className="badge" style={{ background: "#334155" }}>{r.station}</span></td>
-                          <td>
+                          <td data-label="Name"><strong>{r.name}</strong></td>
+                          <td data-label="Station"><ShieldCheck size={14} style={{ verticalAlign: 'middle', marginRight: '4px', color: '#64748b' }} /> {r.station}</td>
+                          <td data-label="Time" className={!r.starts_at && !r.ends_at ? "empty-cell" : ""}>
                             <span className="field-caption">
                               {r.starts_at ? new Date(r.starts_at).toLocaleString() : "Start"} — {r.ends_at ? new Date(r.ends_at).toLocaleString() : "End"}
                             </span>
                           </td>
-                          <td><span className="badge" style={{ background: r.active ? "#10b981" : "#ef4444" }}>{r.active ? "Active" : "Inactive"}</span></td>
-                          <td>
-                            <button className="icon-button" onClick={() => editRule(r)} title="Edit"><Edit3 size={16} /></button>
+                          <td data-label="Status"><span className="badge" style={{ background: r.active ? "#10b981" : "#ef4444" }}>{r.active ? "Active" : "Inactive"}</span></td>
+                          <td data-label="Actions">
+                            <div className="row">
+                              <button className="icon-button" onClick={() => editRule(r)} title="Edit"><Edit3 size={16} /></button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -1305,14 +1312,7 @@ function Admin({ globalSettings }: { globalSettings: Record<string, string> }) {
         </div>
       )}
 
-      {tab === "users" && (
-        <div className="stack">
-          <div className="admin-tabs" style={{ alignSelf: "flex-start", marginBottom: "-8px" }}>
-            <button className={userSubTab === "users" ? "active" : ""} onClick={() => setUserSubTab("users")}>Users</button>
-            <button className={userSubTab === "categories" ? "active" : ""} onClick={() => setUserSubTab("categories")}>Categories (Roles)</button>
-          </div>
-
-          {userSubTab === "categories" && (
+      {tab === "categories" && (
             <div className="admin-grid">
               <form className="panel" onSubmit={saveCategory}>
                 <div className="panel-header">
@@ -1380,9 +1380,9 @@ function Admin({ globalSettings }: { globalSettings: Record<string, string> }) {
                 </div>
               </div>
             </div>
-          )}
+      )}
 
-          {userSubTab === "users" && (
+      {tab === "users" && (
             <div className="admin-grid">
               <form className="panel" onSubmit={createUser}>
                 <div className="panel-header">
@@ -1452,8 +1452,6 @@ function Admin({ globalSettings }: { globalSettings: Record<string, string> }) {
               </div>
             </div>
           )}
-        </div>
-      )}
 
       {tab === "verification" && (
         <VerificationQueue session={getSession()!} attendees={attendees} loadAttendees={loadAttendees} />
@@ -1909,20 +1907,20 @@ function VerificationQueue({
                 const isTransfer = !!attendee.metadata?.transferredFrom;
                 return (
                   <tr key={attendee.id}>
-                    <td>
+                    <td data-label="Type">
                       <span className={`status-badge ${isTransfer ? "pending" : "verified"}`}>
                         {isTransfer ? "Ticket Transfer" : "New Registration"}
                       </span>
                     </td>
-                    <td>{attendee.name}</td>
-                    <td>{attendee.email}</td>
-                    <td>{attendee.college ?? "None"}</td>
-                    <td><small>{attendee.metadata?.transferredFrom ?? "N/A"}</small></td>
-                    <td>
+                    <td data-label="Attendee Name">{attendee.name}</td>
+                    <td data-label="Email">{attendee.email}</td>
+                    <td data-label="College">{attendee.college ?? "None"}</td>
+                    <td data-label="Original Ticket">{attendee.metadata?.transferredFrom ?? "N/A"}</td>
+                    <td data-label="Actions">
                       <div className="row">
-                        <button onClick={() => setSelectedAttendee(attendee)}>Review Details</button>
-                        <button className="secondary" onClick={() => handleVerify(attendee.id, "approve")}>Approve</button>
-                        <button className="danger" onClick={() => handleVerify(attendee.id, "reject")}>Reject</button>
+                        <button onClick={() => setSelectedAttendee(attendee)}><Search size={16} /> Review Details</button>
+                        <button className="secondary" onClick={() => handleVerify(attendee.id, "approve")}><Check size={16} /> Approve</button>
+                        <button className="danger" onClick={() => handleVerify(attendee.id, "reject")}><X size={16} /> Reject</button>
                       </div>
                     </td>
                   </tr>
@@ -1986,6 +1984,7 @@ function VolunteerWorkstation({ session, globalSettings }: { session: Session; g
   const [fields, setFields] = useState<FormField[]>([]);
   const [attendees, setAttendees] = useState<any[]>([]);
   const [message, setMessage] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   async function loadFields() {
     try {
@@ -2013,14 +2012,18 @@ function VolunteerWorkstation({ session, globalSettings }: { session: Session; g
   return (
     <section className="stack" {...swipeHandlers}>
       {message && <p className="notice">{message}</p>}
-      <nav className="admin-tabs">
-        <button className={tab === "scanner" ? "active" : ""} onClick={() => setTab("scanner")}><QrCode size={16} /> Scan QR Codes</button>
-        <button className={tab === "database" ? "active" : ""} onClick={() => setTab("database")}><Users size={16} /> Attendee Database</button>
-        <button className={tab === "verification" ? "active" : ""} onClick={() => setTab("verification")}><ShieldCheck size={16} /> Verification Queue</button>
+      <button className="mobile-menu-toggle" onClick={() => setMenuOpen(!menuOpen)}>
+        {menuOpen ? <X size={24} /> : <Menu size={24} />}
+      </button>
+      <nav className={`admin-tabs ${menuOpen ? "open" : ""}`}>
+        <button className={tab === "scanner" ? "active" : ""} onClick={() => { setTab("scanner"); setMenuOpen(false); }}><QrCode size={16} /> Scan QR Codes</button>
+        <button className={tab === "database" ? "active" : ""} onClick={() => { setTab("database"); setMenuOpen(false); }}><Users size={16} /> Attendee Database</button>
+        <button className={tab === "verification" ? "active" : ""} onClick={() => { setTab("verification"); setMenuOpen(false); }}><ShieldCheck size={16} /> Verification Queue</button>
         {globalSettings.volunteer_onspot_enabled !== "false" && (
-          <button className={tab === "onspot" ? "active" : ""} onClick={() => setTab("onspot")}><Plus size={16} /> On-Spot Registration</button>
+          <button className={tab === "onspot" ? "active" : ""} onClick={() => { setTab("onspot"); setMenuOpen(false); }}><Plus size={16} /> On-Spot Registration</button>
         )}
       </nav>
+      {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />}
 
       {tab === "scanner" && <Scanner session={session} />}
       {tab === "database" && <AttendeeDatabase session={session} fields={fields} attendees={attendees} loadAttendees={loadAttendees} />}
@@ -2265,7 +2268,7 @@ function AttendeeDatabase({
               const colorClass = avatarColors[index % 3];
               return (
                 <tr key={attendee.id}>
-                  <td>
+                  <td data-label="Attendee">
                     <div className="avatar-container">
                       <div className={`avatar-circle ${colorClass}`}>{initials}</div>
                       <div className="attendee-info">
@@ -2274,15 +2277,18 @@ function AttendeeDatabase({
                       </div>
                     </div>
                   </td>
-                  {listColumns.filter(col => !["name", "email"].includes(col.fieldKey)).map((col) => (
-                    <td key={col.id}>{String(attendee[col.fieldKey] ?? attendee.metadata?.customFields?.[col.fieldKey] ?? "")}</td>
-                  ))}
-                  <td>
+                  {listColumns.filter(col => !["name", "email"].includes(col.fieldKey)).map((col) => {
+                    const val = String(attendee[col.fieldKey] ?? attendee.metadata?.customFields?.[col.fieldKey] ?? "");
+                    return (
+                      <td key={col.id} data-label={col.label} className={val.trim() === "" ? "empty-cell" : ""}>{val}</td>
+                    );
+                  })}
+                  <td data-label="Verification Status">
                     <span className={`status-badge ${(attendee.metadata?.verificationStatus ?? "verified")}`}>
                       {attendee.metadata?.verificationStatus ?? "verified"}
                     </span>
                   </td>
-                  <td>
+                  <td data-label="Actions">
                     <div className="row">
                       <button className="secondary" onClick={() => handleEditClick(attendee)}><Edit3 size={14} /> Edit</button>
                     </div>
@@ -2663,21 +2669,21 @@ function ScanHistoryPanel() {
             ) : (
               scans.map(scan => (
                 <tr key={scan.id}>
-                  <td>{new Date(scan.scanned_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                  <td>
+                  <td data-label="Time">{new Date(scan.scanned_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                  <td data-label="Attendee">
                     <strong>{scan.attendee_name || "Unknown"}</strong><br />
                     <span className="field-caption">{scan.attendee_email}</span>
                   </td>
-                  <td><span className="badge" style={{ background: "#334155" }}>{scan.station}</span></td>
-                  <td>
+                  <td data-label="Station"><ShieldCheck size={14} style={{ verticalAlign: 'middle', marginRight: '4px', color: '#64748b' }} /> <strong>{scan.station}</strong></td>
+                  <td data-label="Status">
                     {scan.status === "accepted" ? (
                       <span className="badge success">Accepted</span>
                     ) : (
                       <span className="badge error" title={scan.reason}>{scan.status}</span>
                     )}
                   </td>
-                  <td>{scan.volunteer_name || "Offline"}</td>
-                  <td>{scan.rule_name || "-"}</td>
+                  <td data-label="Volunteer">{scan.volunteer_name || scan.volunteer_email}</td>
+                  <td data-label="Rule" className={!scan.rule_name ? "empty-cell" : ""}><small className="muted">{scan.rule_name || "-"}</small></td>
                 </tr>
               ))
             )}
