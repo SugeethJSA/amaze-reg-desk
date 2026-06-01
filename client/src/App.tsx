@@ -2,6 +2,7 @@ import { Activity, Camera, CameraOff, Download, Edit3, LogOut, Plus, QrCode, Ref
 import { Html5Qrcode } from "html5-qrcode";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { API_URL, api, getSession, setSession, type Session } from "./api";
+import { Analytics } from "@vercel/analytics/react";
 import { decryptQrPayload, hasEncryptedQrShape, hashPayload } from "./crypto";
 import { deviceId, enqueueScan, flushScans, listQueuedScans } from "./offlineQueue";
 
@@ -202,6 +203,7 @@ export function App() {
         {view === "admin" && <Admin />}
         {view === "scanner" && <VolunteerWorkstation session={session} />}
       </main>
+      <Analytics />
     </div>
   );
 }
