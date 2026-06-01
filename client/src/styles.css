@@ -1634,7 +1634,7 @@ tbody tr:hover {
 
 @media (max-width: 1100px) {
   .admin-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .dashboard-grid {
     grid-template-columns: 1fr;
@@ -1726,7 +1726,7 @@ tbody tr:hover {
   }
 
   .form-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .top-nav {

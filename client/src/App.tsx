@@ -130,6 +130,13 @@ export function App() {
   const [view, setView] = useState<View>("dashboard");
   const [publicView, setPublicView] = useState<"login" | "register" | "transfer">("login");
   const [globalSettings, setGlobalSettings] = useState<Record<string, string>>({});
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+
+  useEffect(() => {
+    if (session && session.user.role !== "admin" && view !== "scanner" && view !== "account") {
+      setView("scanner");
+    }
+  }, [session, view]);
 
   useEffect(() => {
     api<{ settings: Record<string, string> }>("/settings").then((res) => {
@@ -140,8 +147,17 @@ export function App() {
       if (res.settings.app_name) {
         document.title = res.settings.app_name;
       }
-    }).catch(() => undefined);
+      setSettingsLoaded(true);
+    }).catch(() => setSettingsLoaded(true));
   }, []);
+
+  if (!settingsLoaded) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div className="spinner" style={{ width: 24, height: 24, border: "2px solid #e2e8f0", borderTopColor: "var(--color-primary, #6366f1)", borderRadius: "50%", animation: "spin 1s linear infinite" }}></div>
+      </div>
+    );
+  }
 
   if (!session) {
     if (publicView === "register" && globalSettings.public_registrations_enabled !== "false") {
@@ -164,7 +180,7 @@ export function App() {
   }
 
   return (
-    <div className={`app-shell ${session.user.role === "admin" ? "has-top-nav" : ""}`}>
+    <div className="app-shell has-top-nav">
       <header className="app-header">
         <div className="brand">
           {globalSettings.logo_url ? (
@@ -177,13 +193,15 @@ export function App() {
             <h1>{globalSettings.app_name || "Reg Desk"}</h1>
           </div>
         </div>
-        {session.user.role === "admin" && (
-          <nav className="top-nav">
-            <button className={view === "dashboard" ? "active" : ""} onClick={() => setView("dashboard")}><Activity size={18} /> Dashboard</button>
-            <button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}><Users size={18} /> Admin</button>
-            <button className={view === "scanner" ? "active" : ""} onClick={() => setView("scanner")}><QrCode size={18} /> Volunteer Workstation</button>
-          </nav>
-        )}
+        <nav className="top-nav">
+          {session.user.role === "admin" && (
+            <>
+              <button className={view === "dashboard" ? "active" : ""} onClick={() => setView("dashboard")}><Activity size={18} /> Dashboard</button>
+              <button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}><Users size={18} /> Admin</button>
+            </>
+          )}
+          <button className={view === "scanner" ? "active" : ""} onClick={() => setView("scanner")}><QrCode size={18} /> Volunteer Workstation</button>
+        </nav>
         <div className="account-bar" style={{ display: "flex", gap: "8px" }}>
           <button className={view === "account" ? "icon-button active" : "icon-button"} aria-label="Account" title="Account" onClick={() => setView("account")}>
             <User size={18} />
