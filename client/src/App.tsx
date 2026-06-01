@@ -139,7 +139,7 @@ export function App() {
   }, [session, view]);
 
   useEffect(() => {
-    api<{ settings: Record<string, string> }>("/settings").then((res) => {
+    api<{ settings: Record<string, string> }>("/settings/public").then((res) => {
       setGlobalSettings(res.settings);
       if (res.settings.primary_color) {
         document.documentElement.style.setProperty("--color-primary", res.settings.primary_color);

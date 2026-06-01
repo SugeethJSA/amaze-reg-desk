@@ -5,6 +5,22 @@ import { requireAuth, requireAdmin } from "../middleware/auth.js";
 
 export const settingsRouter = Router();
 
+settingsRouter.get("/public", async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ($1, $2, $3, $4, $5, $6, $7, $8)",
+      ["app_name", "logo_url", "primary_color", "event_name", "public_registrations_enabled", "public_transfers_enabled", "volunteer_onspot_enabled", "admin_onspot_enabled"]
+    );
+    const settings = result.rows.reduce((acc, row) => {
+      acc[row.setting_key] = row.setting_value;
+      return acc;
+    }, {} as Record<string, any>);
+    res.json({ settings });
+  } catch (error) {
+    next(error);
+  }
+});
+
 settingsRouter.get("/", requireAuth, requireAdmin, async (req, res, next) => {
   try {
     const result = await pool.query(
