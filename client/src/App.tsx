@@ -1,4 +1,4 @@
-import { Activity, Camera, CameraOff, Download, Edit3, LogOut, Plus, QrCode, RefreshCcw, Save, Send, ShieldCheck, Trash2, Upload, Users, X } from "lucide-react";
+import { Activity, Camera, CameraOff, Download, Edit3, LogOut, Plus, QrCode, RefreshCcw, Save, Send, ShieldCheck, Trash2, Upload, User, Users, X } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { API_URL, api, getSession, setSession, type Session } from "./api";
@@ -130,6 +130,7 @@ export function App() {
   const [view, setView] = useState<View>("dashboard");
   const [publicView, setPublicView] = useState<"login" | "register" | "transfer">("login");
   const [globalSettings, setGlobalSettings] = useState<Record<string, string>>({});
+  const [showAccountModal, setShowAccountModal] = useState(false);
 
   useEffect(() => {
     api<{ settings: Record<string, string> }>("/settings").then((res) => {
@@ -184,11 +185,10 @@ export function App() {
             <button className={view === "scanner" ? "active" : ""} onClick={() => setView("scanner")}><QrCode size={18} /> Volunteer Workstation</button>
           </nav>
         )}
-        <div className="account-bar">
-          <div>
-            <p className="eyebrow">Signed in as {session.user.role}</p>
-            <strong>{session.user.name}</strong>
-          </div>
+        <div className="account-bar" style={{ display: "flex", gap: "8px" }}>
+          <button className="icon-button" aria-label="Account" title="Account" onClick={() => setShowAccountModal(true)}>
+            <User size={18} />
+          </button>
           <button className="icon-button" aria-label="Sign out" title="Sign out" onClick={() => {
             setSession(null);
             setSessionState(null);
@@ -200,6 +200,68 @@ export function App() {
         {view === "admin" && <Admin globalSettings={globalSettings} />}
         {view === "scanner" && <VolunteerWorkstation session={session} globalSettings={globalSettings} />}
       </main>
+      
+      {showAccountModal && (
+        <AccountModal 
+          session={session} 
+          onClose={() => setShowAccountModal(false)} 
+          onLogout={() => {
+            setSession(null);
+            setSessionState(null);
+          }} 
+        />
+      )}
+    </div>
+  );
+}
+
+function AccountModal({ session, onClose, onLogout }: { session: Session, onClose: () => void, onLogout: () => void }) {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [message, setMessage] = useState("");
+
+  async function updatePassword(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      await api("/auth/users/me/password", {
+        method: "PUT",
+        body: JSON.stringify({ currentPassword, newPassword })
+      });
+      setMessage("Password updated successfully.");
+      setCurrentPassword("");
+      setNewPassword("");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Failed to update password.");
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-content" onClick={e => e.stopPropagation()}>
+        <div className="panel-header">
+          <h3>Account details</h3>
+          <button className="icon-button" onClick={onClose}><X size={16} /></button>
+        </div>
+        <div className="form-grid" style={{ marginBottom: 20 }}>
+          <label>Name<input value={session.user.name} disabled /></label>
+          <label>Role<input value={session.user.role} disabled /></label>
+          <label style={{ gridColumn: "1 / -1" }}>User ID<input value={session.user.id} disabled /></label>
+        </div>
+        <hr style={{ margin: "20px 0", borderTop: "1px solid var(--color-border)" }} />
+        <form onSubmit={updatePassword} className="stack">
+          <h4>Change password</h4>
+          {message && <p className="notice">{message}</p>}
+          <label>Current password<input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required /></label>
+          <label>New password<input type="password" value={newPassword} minLength={8} onChange={e => setNewPassword(e.target.value)} required /></label>
+          <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: 8 }}>
+            <button type="submit">Update password</button>
+          </div>
+        </form>
+        <hr style={{ margin: "20px 0", borderTop: "1px solid var(--color-border)" }} />
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <button type="button" className="danger-button" onClick={onLogout}><LogOut size={16} style={{ marginRight: 8 }} /> Sign out entirely</button>
+        </div>
+      </div>
     </div>
   );
 }
