@@ -139,10 +139,28 @@ export function App() {
   }, [session, view]);
 
   useEffect(() => {
+    const cachedSettings = localStorage.getItem("cached_public_settings");
+    if (cachedSettings) {
+      try {
+        const parsed = JSON.parse(cachedSettings);
+        setGlobalSettings(parsed);
+        if (parsed.primary_color) {
+          document.documentElement.style.setProperty("--color-primary", parsed.primary_color);
+          document.documentElement.style.setProperty("--color-brand-accent", parsed.primary_color);
+          document.documentElement.style.setProperty("--color-brand-bg", parsed.primary_color);
+        }
+        if (parsed.app_name) document.title = parsed.app_name;
+        setSettingsLoaded(true);
+      } catch (e) {}
+    }
+
     api<{ settings: Record<string, string> }>("/settings/public").then((res) => {
+      localStorage.setItem("cached_public_settings", JSON.stringify(res.settings));
       setGlobalSettings(res.settings);
       if (res.settings.primary_color) {
         document.documentElement.style.setProperty("--color-primary", res.settings.primary_color);
+        document.documentElement.style.setProperty("--color-brand-accent", res.settings.primary_color);
+        document.documentElement.style.setProperty("--color-brand-bg", res.settings.primary_color);
       }
       if (res.settings.app_name) {
         document.title = res.settings.app_name;
@@ -2526,7 +2544,11 @@ function BrandingSettingsPanel() {
         body: JSON.stringify(settings)
       });
       setMessage("Settings saved. Refresh the page to see global changes.");
-      if (settings.primary_color) document.documentElement.style.setProperty("--color-primary", settings.primary_color);
+      if (settings.primary_color) {
+        document.documentElement.style.setProperty("--color-primary", settings.primary_color);
+        document.documentElement.style.setProperty("--color-brand-accent", settings.primary_color);
+        document.documentElement.style.setProperty("--color-brand-bg", settings.primary_color);
+      }
       if (settings.app_name) document.title = settings.app_name;
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Failed to save settings.");
