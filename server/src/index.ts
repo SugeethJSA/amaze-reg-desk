@@ -1,6 +1,7 @@
 import cors from "cors";
 import express from "express";
 import rateLimit from "express-rate-limit";
+import helmet from "helmet";
 import { ZodError } from "zod";
 import { config } from "./config.js";
 import { attendeesRouter } from "./routes/attendees.js";
@@ -15,6 +16,7 @@ import { statsRouter } from "./routes/stats.js";
 
 const app = express();
 
+app.use(helmet());
 app.use(cors({ origin: config.CORS_ORIGIN, credentials: true }));
 app.use(express.json({ limit: "2mb" }));
 

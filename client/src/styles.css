@@ -1737,15 +1737,36 @@ tbody tr:hover {
     min-height: 34px;
   }
 
+  .content {
+    padding-bottom: 70px !important;
+  }
+
   .admin-tabs {
-    gap: 4px;
-    padding: 4px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    border-radius: 0;
+    border-top: 1px solid #e2e8f0;
+    border-bottom: none;
+    border-left: none;
+    border-right: none;
+    background: #ffffff;
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
+    padding: 8px 12px;
+    gap: 8px;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    -webkit-overflow-scrolling: touch;
   }
 
   .admin-tabs button {
-    font-size: 12px;
-    padding: 0 12px;
-    min-height: 36px;
+    font-size: 13px;
+    padding: 0 16px;
+    min-height: 40px;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 }
 

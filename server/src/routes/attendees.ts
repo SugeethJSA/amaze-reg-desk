@@ -4,8 +4,17 @@ import { pool, withTransaction } from "../db/pool.js";
 import { requireAdmin, requireAuth } from "../middleware/auth.js";
 import { encryptQrPayload } from "../services/crypto.js";
 import xlsx from "xlsx";
+import rateLimit from "express-rate-limit";
 
 export const attendeesRouter = Router();
+
+const publicFormLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: "too_many_requests", message: "Too many registrations from this IP. Please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 const AttendeeSchema = z.object({
   name: z.string().min(1),
@@ -96,6 +105,21 @@ attendeesRouter.get("/export", requireAuth, async (req, res, next) => {
 
 attendeesRouter.post("/", requireAuth, async (req, res, next) => {
   try {
+    const settingsRes = await pool.query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('all_registrations_enabled', 'admin_onspot_enabled', 'volunteer_onspot_enabled')");
+    const settings = settingsRes.rows.reduce((acc, row) => ({ ...acc, [row.setting_key]: row.setting_value }), {} as Record<string, string>);
+
+    if (settings.all_registrations_enabled === "false") {
+      return res.status(403).json({ error: "forbidden", message: "Registrations are currently disabled." });
+    }
+
+    const role = (req as any).user?.role;
+    if (role === "admin" && settings.admin_onspot_enabled === "false") {
+      return res.status(403).json({ error: "forbidden", message: "Admin on-spot registration is disabled." });
+    }
+    if (role === "volunteer" && settings.volunteer_onspot_enabled === "false") {
+      return res.status(403).json({ error: "forbidden", message: "Volunteer on-spot registration is disabled." });
+    }
+
     const input = AttendeeSchema.parse(req.body);
     const result = await pool.query(
       `INSERT INTO attendees (external_ref, name, email, phone, college, department, metadata, registered_on_spot)
@@ -159,8 +183,13 @@ attendeesRouter.put("/:id", requireAuth, async (req, res, next) => {
   }
 });
 
-attendeesRouter.post("/public-register", async (req, res, next) => {
+attendeesRouter.post("/public-register", publicFormLimiter, async (req, res, next) => {
   try {
+    const settingsRes = await pool.query("SELECT setting_value FROM system_settings WHERE setting_key = 'all_registrations_enabled'");
+    if (settingsRes.rows[0]?.setting_value === "false") {
+      return res.status(403).json({ error: "forbidden", message: "Registrations are currently disabled." });
+    }
+
     const input = AttendeeSchema.parse(req.body);
     const paymentProof = req.body.paymentProof;
 
@@ -188,8 +217,13 @@ attendeesRouter.post("/public-register", async (req, res, next) => {
   }
 });
 
-attendeesRouter.post("/public-transfer", async (req, res, next) => {
+attendeesRouter.post("/public-transfer", publicFormLimiter, async (req, res, next) => {
   try {
+    const settingsRes = await pool.query("SELECT setting_value FROM system_settings WHERE setting_key = 'all_registrations_enabled'");
+    if (settingsRes.rows[0]?.setting_value === "false") {
+      return res.status(403).json({ error: "forbidden", message: "Transfers are currently disabled." });
+    }
+
     const { originalAttendeeId, recipient, paymentProof } = req.body;
     if (!originalAttendeeId) {
       return res.status(400).json({ error: "missing_original_id", message: "Original attendee ID is required." });

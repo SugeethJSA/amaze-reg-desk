@@ -199,8 +199,8 @@ export function App() {
       </header>
       <main className="content">
         {view === "dashboard" && <Dashboard />}
-        {view === "admin" && <Admin />}
-        {view === "scanner" && <VolunteerWorkstation session={session} />}
+        {view === "admin" && <Admin globalSettings={globalSettings} />}
+        {view === "scanner" && <VolunteerWorkstation session={session} globalSettings={globalSettings} />}
       </main>
     </div>
   );
@@ -516,7 +516,7 @@ function CustomFieldBreakdownPanel({ breakdown }: { breakdown: CustomFieldBreakd
   );
 }
 
-function Admin() {
+function Admin({ globalSettings }: { globalSettings: Record<string, string> }) {
   const [tab, setTab] = useState<AdminTab>("registrations");
   const [file, setFile] = useState<File | null>(null);
   const [message, setMessage] = useState("");
@@ -536,7 +536,9 @@ function Admin() {
     validations: { min: undefined, max: undefined, regex: "" },
     calculation: ""
   });
-  const [ruleForm, setRuleForm] = useState({ name: "", station: "entry", startsAt: "", endsAt: "" });
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+  const [ruleForm, setRuleForm] = useState({ name: "", station: "entry", startsAt: "", endsAt: "", active: true });
+  const [scanRules, setScanRules] = useState<any[]>([]);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [scopes, setScopes] = useState<Station[]>(["entry", "food", "kit", "custom"]);
   const [categories, setCategories] = useState<UserCategory[]>([]);
@@ -587,11 +589,17 @@ function Admin() {
     }
   }
 
+  async function loadRules() {
+    const res = await api<{ rules: any[] }>("/rules");
+    setScanRules(res.rules);
+  }
+
   useEffect(() => {
     loadAttendees().catch(() => undefined);
     loadFields().catch(() => undefined);
     loadUsers().catch(() => undefined);
     loadCategories().catch(() => undefined);
+    loadRules().catch(() => undefined);
   }, []);
 
   async function upload(path: string) {
@@ -712,26 +720,45 @@ function Admin() {
     }
   }
 
-  async function createRule(event: FormEvent) {
+  async function saveRule(event: FormEvent) {
     event.preventDefault();
     setMessage("");
     try {
-      await api("/rules", {
-        method: "POST",
-        body: JSON.stringify({
-          name: ruleForm.name,
-          station: ruleForm.station,
-          startsAt: ruleForm.startsAt ? new Date(ruleForm.startsAt).toISOString() : undefined,
-          endsAt: ruleForm.endsAt ? new Date(ruleForm.endsAt).toISOString() : undefined,
-          eligibility: {},
-          active: true
-        })
+      const payload = {
+        name: ruleForm.name,
+        station: ruleForm.station,
+        startsAt: ruleForm.startsAt ? new Date(ruleForm.startsAt).toISOString() : undefined,
+        endsAt: ruleForm.endsAt ? new Date(ruleForm.endsAt).toISOString() : undefined,
+        eligibility: {},
+        active: ruleForm.active
+      };
+      await api(editingRuleId ? `/rules/${editingRuleId}` : "/rules", {
+        method: editingRuleId ? "PUT" : "POST",
+        body: JSON.stringify(payload)
       });
-      setRuleForm({ name: "", station: "entry", startsAt: "", endsAt: "" });
-      setMessage("Scan rule created.");
+      setRuleForm({ name: "", station: "entry", startsAt: "", endsAt: "", active: true });
+      setEditingRuleId(null);
+      setMessage(editingRuleId ? "Scan rule updated." : "Scan rule created.");
+      await loadRules();
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Failed to create rule.");
+      setMessage(err instanceof Error ? err.message : "Failed to save rule.");
     }
+  }
+
+  function editRule(r: any) {
+    setEditingRuleId(r.id);
+    setRuleForm({
+      name: r.name,
+      station: r.station,
+      startsAt: r.starts_at ? new Date(new Date(r.starts_at).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : "",
+      endsAt: r.ends_at ? new Date(new Date(r.ends_at).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : "",
+      active: r.active
+    });
+  }
+
+  function cancelRuleEdit() {
+    setEditingRuleId(null);
+    setRuleForm({ name: "", station: "entry", startsAt: "", endsAt: "", active: true });
   }
 
   async function createUser(event: FormEvent) {
@@ -915,9 +942,11 @@ function Admin() {
               <button onClick={() => upload("/imports/commit")}><Upload size={16} /> Commit</button>
             </div>
           </div>
-          <div className="panel wide-panel">
-            <OnSpotForm session={getSession()!} fields={fields} loadAttendees={loadAttendees} />
-          </div>
+          {globalSettings.admin_onspot_enabled !== "false" && (
+            <div className="panel wide-panel">
+              <OnSpotForm session={getSession()!} fields={fields} loadAttendees={loadAttendees} />
+            </div>
+          )}
           <div className="panel full-span">
             <h3>Recent registrations</h3>
             <div className="table-wrap">
@@ -1096,8 +1125,11 @@ function Admin() {
 
       {tab === "rules" && (
         <div className="admin-grid">
-          <form className="panel narrow-panel" onSubmit={createRule}>
-            <h3>Scan rule</h3>
+          <form className="panel narrow-panel" onSubmit={saveRule}>
+            <div className="panel-header">
+              <h3>{editingRuleId ? "Edit scan rule" : "Create scan rule"}</h3>
+              {editingRuleId && <button type="button" className="icon-button" title="Cancel edit" onClick={cancelRuleEdit}><X size={16} /></button>}
+            </div>
             <label>Name<input value={ruleForm.name} onChange={(event) => setRuleForm({ ...ruleForm, name: event.target.value })} required /></label>
             <label>Station
               <select value={ruleForm.station} onChange={(event) => setRuleForm({ ...ruleForm, station: event.target.value })}>
@@ -1109,9 +1141,52 @@ function Admin() {
             </label>
             <label>Starts<input type="datetime-local" value={ruleForm.startsAt} onChange={(event) => setRuleForm({ ...ruleForm, startsAt: event.target.value })} /></label>
             <label>Ends<input type="datetime-local" value={ruleForm.endsAt} onChange={(event) => setRuleForm({ ...ruleForm, endsAt: event.target.value })} /></label>
-            <button type="submit">Create rule</button>
+            <label className="checkbox-field">
+              <input type="checkbox" checked={ruleForm.active} onChange={(e) => setRuleForm({ ...ruleForm, active: e.target.checked })} />
+              Active
+            </label>
+            <button type="submit">{editingRuleId ? "Update rule" : "Create rule"}</button>
           </form>
-          <ScanHistoryPanel />
+          <div className="stack">
+            <div className="panel wide-panel">
+              <h3>Existing rules</h3>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Station</th>
+                      <th>Timeframe</th>
+                      <th>Status</th>
+                      <th style={{ width: 80 }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {scanRules.length === 0 ? (
+                      <tr><td colSpan={5} style={{ textAlign: "center", color: "#64748b" }}>No rules defined.</td></tr>
+                    ) : (
+                      scanRules.map(r => (
+                        <tr key={r.id}>
+                          <td><strong>{r.name}</strong></td>
+                          <td><span className="badge" style={{ background: "#334155" }}>{r.station}</span></td>
+                          <td>
+                            <span className="field-caption">
+                              {r.starts_at ? new Date(r.starts_at).toLocaleString() : "Start"} — {r.ends_at ? new Date(r.ends_at).toLocaleString() : "End"}
+                            </span>
+                          </td>
+                          <td><span className="badge" style={{ background: r.active ? "#10b981" : "#ef4444" }}>{r.active ? "Active" : "Inactive"}</span></td>
+                          <td>
+                            <button className="icon-button" onClick={() => editRule(r)} title="Edit"><Edit3 size={16} /></button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <ScanHistoryPanel />
+          </div>
         </div>
       )}
 
@@ -1786,7 +1861,7 @@ function VerificationQueue({
 }
 
 // Volunteer Workstation Component containing sub-views
-function VolunteerWorkstation({ session }: { session: Session }) {
+function VolunteerWorkstation({ session, globalSettings }: { session: Session; globalSettings: Record<string, string>; }) {
   const [tab, setTab] = useState<"scanner" | "database" | "verification" | "onspot">("scanner");
   const [fields, setFields] = useState<FormField[]>([]);
   const [attendees, setAttendees] = useState<any[]>([]);
@@ -1822,13 +1897,15 @@ function VolunteerWorkstation({ session }: { session: Session }) {
         <button className={tab === "scanner" ? "active" : ""} onClick={() => setTab("scanner")}><QrCode size={16} /> Scan QR Codes</button>
         <button className={tab === "database" ? "active" : ""} onClick={() => setTab("database")}><Users size={16} /> Attendee Database</button>
         <button className={tab === "verification" ? "active" : ""} onClick={() => setTab("verification")}><ShieldCheck size={16} /> Verification Queue</button>
-        <button className={tab === "onspot" ? "active" : ""} onClick={() => setTab("onspot")}><Plus size={16} /> On-Spot Registration</button>
+        {globalSettings.volunteer_onspot_enabled !== "false" && (
+          <button className={tab === "onspot" ? "active" : ""} onClick={() => setTab("onspot")}><Plus size={16} /> On-Spot Registration</button>
+        )}
       </nav>
 
       {tab === "scanner" && <Scanner session={session} />}
       {tab === "database" && <AttendeeDatabase session={session} fields={fields} attendees={attendees} loadAttendees={loadAttendees} />}
       {tab === "verification" && <VerificationQueue session={session} attendees={attendees} loadAttendees={loadAttendees} />}
-      {tab === "onspot" && <OnSpotForm session={session} fields={fields} loadAttendees={loadAttendees} onSaved={() => setTab("database")} />}
+      {tab === "onspot" && globalSettings.volunteer_onspot_enabled !== "false" && <OnSpotForm session={session} fields={fields} loadAttendees={loadAttendees} onSaved={() => setTab("database")} />}
     </section>
   );
 }
@@ -2385,6 +2462,23 @@ function BrandingSettingsPanel() {
             <label className="checkbox-field" style={{ fontSize: "14px" }}>
               <input type="checkbox" checked={settings.public_transfers_enabled !== "false"} onChange={e => setSettings({ ...settings, public_transfers_enabled: e.target.checked ? "true" : "false" })} />
               Enable Public Ticket Transfers
+            </label>
+          </div>
+
+          <hr />
+          <h3>Admin / Dashboard Features</h3>
+          <div className="form-grid">
+            <label className="checkbox-field" style={{ fontSize: "14px", gridColumn: "1 / -1" }}>
+              <input type="checkbox" checked={settings.all_registrations_enabled !== "false"} onChange={e => setSettings({ ...settings, all_registrations_enabled: e.target.checked ? "true" : "false" })} />
+              <strong>Enable All Registrations (Master Switch)</strong>
+            </label>
+            <label className="checkbox-field" style={{ fontSize: "14px" }}>
+              <input type="checkbox" checked={settings.admin_onspot_enabled !== "false"} onChange={e => setSettings({ ...settings, admin_onspot_enabled: e.target.checked ? "true" : "false" })} />
+              Enable Admin On-Spot Registration
+            </label>
+            <label className="checkbox-field" style={{ fontSize: "14px" }}>
+              <input type="checkbox" checked={settings.volunteer_onspot_enabled !== "false"} onChange={e => setSettings({ ...settings, volunteer_onspot_enabled: e.target.checked ? "true" : "false" })} />
+              Enable Volunteer On-Spot Registration
             </label>
           </div>
 

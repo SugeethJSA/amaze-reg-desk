@@ -21,7 +21,8 @@ qrRouter.post("/batches", requireAuth, requireAdmin, async (req, res, next) => {
       const attendees = await client.query(
         `SELECT id, name, email
            FROM attendees
-          WHERE id NOT IN (SELECT attendee_id FROM qr_codes)`
+          WHERE id NOT IN (SELECT attendee_id FROM qr_codes)
+            AND metadata->>'verificationStatus' = 'verified'`
       );
 
       for (const attendee of attendees.rows) {
@@ -60,6 +61,7 @@ qrRouter.post("/send", requireAuth, requireAdmin, async (req, res, next) => {
          FROM qr_codes q
          JOIN attendees a ON a.id = q.attendee_id
         WHERE ($1::uuid IS NULL OR q.batch_id = $1)
+          AND a.metadata->>'verificationStatus' = 'verified'
           AND (
             ($2 = 'unsent' AND q.sent_at IS NULL)
             OR

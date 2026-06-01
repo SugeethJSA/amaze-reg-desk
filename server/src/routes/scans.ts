@@ -54,9 +54,19 @@ scansRouter.post("/sync", requireAuth, async (req, res, next) => {
           continue;
         }
 
-        const qr = await client.query("SELECT * FROM qr_codes WHERE payload_hash = $1", [scan.payloadHash]);
+        const qr = await client.query(
+          `SELECT q.*, a.metadata->>'verificationStatus' as verification_status 
+             FROM qr_codes q
+             JOIN attendees a ON a.id = q.attendee_id
+            WHERE q.payload_hash = $1`,
+          [scan.payloadHash]
+        );
         if (!qr.rows[0]) {
           synced.push({ localScanId: scan.localScanId, status: "denied", reason: "Unknown QR code." });
+          continue;
+        }
+        if (qr.rows[0].verification_status !== "verified") {
+          synced.push({ localScanId: scan.localScanId, status: "denied", reason: "Attendee registration is not verified." });
           continue;
         }
 
