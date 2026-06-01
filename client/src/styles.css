@@ -1722,7 +1722,7 @@ tbody tr:hover {
 
 @media (max-width: 480px) {
   .metric-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .form-grid {
