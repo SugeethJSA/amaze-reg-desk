@@ -40,26 +40,80 @@ type CustomFieldBreakdown = {
   fieldType: "select" | "checkbox";
   values: Array<{ label: string; count: number }>;
 };
+type RuleOperator = "equals" | "not_equals" | "contains" | "gt" | "lt" | "empty" | "not_empty";
+
+interface VisibilityRule {
+  field: string;
+  operator: RuleOperator;
+  value?: string;
+}
+
+interface VisibilityRules {
+  condition: "AND" | "OR";
+  rules: VisibilityRule[];
+}
+
+interface FieldValidations {
+  min?: number;
+  max?: number;
+  regex?: string;
+}
+
 type FormField = {
   id: string;
   fieldKey: string;
   label: string;
-  fieldType: "text" | "email" | "phone" | "number" | "select" | "textarea" | "checkbox";
+  fieldType: "text" | "email" | "phone" | "number" | "select" | "textarea" | "checkbox" | "hidden" | "calculated";
   required: boolean;
   options: string[];
   sortOrder: number;
   active: boolean;
   showInList: boolean;
-  dependsOnField?: string;
-  dependsOnValue?: string;
+  visibilityRules?: VisibilityRules | null;
+  validations?: FieldValidations | null;
+  calculation?: string | null;
 };
 
 function isFieldVisible(field: FormField, allFields: FormField[], formValues: Record<string, any>): boolean {
-  if (!field.dependsOnField) return true;
-  const parentField = allFields.find(f => f.fieldKey === field.dependsOnField);
-  if (!parentField) return true;
-  if (!isFieldVisible(parentField, allFields, formValues)) return false;
-  return formValues[field.dependsOnField] === field.dependsOnValue;
+  if (!field.visibilityRules || !field.visibilityRules.rules || field.visibilityRules.rules.length === 0) return true;
+  
+  const evaluateRule = (rule: VisibilityRule) => {
+    const parentField = allFields.find(f => f.fieldKey === rule.field);
+    if (parentField && !isFieldVisible(parentField, allFields, formValues)) return false;
+
+    const val = formValues[rule.field] ?? "";
+    const strVal = String(val).toLowerCase();
+    const ruleVal = String(rule.value || "").toLowerCase();
+    
+    switch (rule.operator) {
+      case "equals": return strVal === ruleVal;
+      case "not_equals": return strVal !== ruleVal;
+      case "contains": return strVal.includes(ruleVal);
+      case "gt": return Number(val) > Number(rule.value);
+      case "lt": return Number(val) < Number(rule.value);
+      case "empty": return val === "" || val === null || val === undefined || (Array.isArray(val) && val.length === 0);
+      case "not_empty": return val !== "" && val !== null && val !== undefined && !(Array.isArray(val) && val.length === 0);
+      default: return true;
+    }
+  };
+
+  return field.visibilityRules.condition === "OR" 
+    ? field.visibilityRules.rules.some(evaluateRule)
+    : field.visibilityRules.rules.every(evaluateRule);
+}
+
+function calculateFieldValue(calculation: string, values: Record<string, any>): number {
+  if (!calculation) return 0;
+  try {
+    const expr = calculation.replace(/{{(.*?)}}/g, (match, key) => {
+      const val = values[key.trim()];
+      return String(Number(val) || 0);
+    });
+    const sanitized = expr.replace(/[^0-9+\-*/(). ]/g, "");
+    return new Function(`return ${sanitized}`)();
+  } catch (e) {
+    return 0;
+  }
 }
 
 // Fallback dynamic fields to ensure unseeded systems load perfectly
@@ -469,17 +523,18 @@ function Admin() {
   const [attendees, setAttendees] = useState<any[]>([]);
   const [fields, setFields] = useState<FormField[]>([]);
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
-  const [fieldForm, setFieldForm] = useState({
+  const [fieldForm, setFieldForm] = useState<Partial<FormField>>({
     fieldKey: "",
     label: "",
     fieldType: "text",
     required: false,
-    options: "",
+    options: [] as any,
     sortOrder: 0,
     active: true,
     showInList: false,
-    dependsOnField: "",
-    dependsOnValue: ""
+    visibilityRules: { condition: "AND", rules: [] },
+    validations: { min: undefined, max: undefined, regex: "" },
+    calculation: ""
   });
   const [ruleForm, setRuleForm] = useState({ name: "", station: "entry", startsAt: "", endsAt: "" });
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -555,7 +610,7 @@ function Admin() {
 
   function startNewField() {
     setEditingFieldId(null);
-    setFieldForm({ fieldKey: "", label: "", fieldType: "text", required: false, options: "", sortOrder: fields.length + 1, active: true, showInList: false, dependsOnField: "", dependsOnValue: "" });
+    setFieldForm({ fieldKey: "", label: "", fieldType: "text", required: false, options: [] as any, sortOrder: fields.length + 1, active: true, showInList: false, visibilityRules: { condition: "AND", rules: [] }, validations: { min: undefined, max: undefined, regex: "" }, calculation: "" });
   }
 
   function editField(field: FormField) {
@@ -565,12 +620,13 @@ function Admin() {
       label: field.label,
       fieldType: field.fieldType,
       required: field.required,
-      options: field.options.join(", "),
+      options: field.options.join(", ") as any,
       sortOrder: field.sortOrder,
       active: field.active,
       showInList: field.showInList || false,
-      dependsOnField: field.dependsOnField || "",
-      dependsOnValue: field.dependsOnValue || ""
+      visibilityRules: field.visibilityRules || { condition: "AND", rules: [] },
+      validations: field.validations || { min: undefined, max: undefined, regex: "" },
+      calculation: field.calculation || ""
     });
     setTab("form");
   }
@@ -581,8 +637,11 @@ function Admin() {
     try {
       const payload = {
         ...fieldForm,
-        options: fieldForm.options.split(",").map((option) => option.trim()).filter(Boolean),
-        sortOrder: Number(fieldForm.sortOrder)
+        options: typeof fieldForm.options === "string" ? (fieldForm.options as string).split(",").map((option: string) => option.trim()).filter(Boolean) : fieldForm.options,
+        sortOrder: Number(fieldForm.sortOrder),
+        visibilityRules: fieldForm.visibilityRules?.rules.length ? fieldForm.visibilityRules : null,
+        validations: (fieldForm.validations?.min !== undefined || fieldForm.validations?.max !== undefined || fieldForm.validations?.regex) ? fieldForm.validations : null,
+        calculation: fieldForm.calculation || null
       };
       await api(editingFieldId ? `/form-fields/${editingFieldId}` : "/form-fields", {
         method: editingFieldId ? "PUT" : "POST",
@@ -914,7 +973,7 @@ function Admin() {
             <label>Label<input value={fieldForm.label} onChange={(event) => setFieldForm({ ...fieldForm, label: event.target.value })} required /></label>
             <label>Field key<input value={fieldForm.fieldKey} onChange={(event) => setFieldForm({ ...fieldForm, fieldKey: event.target.value })} placeholder="workshop_track" required /></label>
             <label>Type
-              <select value={fieldForm.fieldType} onChange={(event) => setFieldForm({ ...fieldForm, fieldType: event.target.value })}>
+              <select value={fieldForm.fieldType} onChange={(event) => setFieldForm({ ...fieldForm, fieldType: event.target.value as any })}>
                 <option value="text">Text</option>
                 <option value="email">Email</option>
                 <option value="phone">Phone</option>
@@ -922,29 +981,84 @@ function Admin() {
                 <option value="select">Select</option>
                 <option value="textarea">Textarea</option>
                 <option value="checkbox">Checkbox</option>
+                <option value="hidden">Hidden</option>
+                <option value="calculated">Calculated</option>
               </select>
             </label>
-            <label>Options<input value={fieldForm.options} onChange={(event) => setFieldForm({ ...fieldForm, options: event.target.value })} placeholder="Option A, Option B" /></label>
+            <label>Options<input value={fieldForm.options as any} onChange={(event) => setFieldForm({ ...fieldForm, options: event.target.value as any })} placeholder="Option A, Option B" /></label>
             <label>Sort order<input type="number" value={fieldForm.sortOrder} onChange={(event) => setFieldForm({ ...fieldForm, sortOrder: Number(event.target.value) })} /></label>
             <div className="check-row">
               <label><input type="checkbox" checked={fieldForm.required} onChange={(event) => setFieldForm({ ...fieldForm, required: event.target.checked })} /> Required</label>
               <label><input type="checkbox" checked={fieldForm.active} onChange={(event) => setFieldForm({ ...fieldForm, active: event.target.checked })} /> Active</label>
               <label><input type="checkbox" checked={fieldForm.showInList} onChange={(event) => setFieldForm({ ...fieldForm, showInList: event.target.checked })} /> Show in list</label>
             </div>
-            <div className="check-row" style={{ marginTop: "8px", gap: "16px" }}>
-              <label style={{ flex: 1 }}>Depends on Field:
-                <select value={fieldForm.dependsOnField || ""} onChange={(e) => setFieldForm({ ...fieldForm, dependsOnField: e.target.value })}>
-                  <option value="">(None)</option>
-                  {fields.filter(f => f.id !== editingFieldId).map(f => (
-                    <option key={f.id} value={f.fieldKey}>{f.label} ({f.fieldKey})</option>
-                  ))}
-                </select>
+            {fieldForm.fieldType === "calculated" && (
+              <label>Calculation Expression (e.g. {'{{ticket_price}} * 2'})
+                <input value={fieldForm.calculation || ""} onChange={(e) => setFieldForm({ ...fieldForm, calculation: e.target.value })} placeholder="{{fieldKey}} * 10" />
               </label>
-              {fieldForm.dependsOnField && (
-                <label style={{ flex: 1 }}>Required Value:
-                  <input value={fieldForm.dependsOnValue || ""} onChange={(e) => setFieldForm({ ...fieldForm, dependsOnValue: e.target.value })} placeholder="Yes" />
+            )}
+
+            <div className="panel" style={{ marginTop: "12px", background: "rgba(0,0,0,0.02)" }}>
+              <h4 style={{ margin: "0 0 8px", fontSize: "14px" }}>Visibility Logic</h4>
+              <div className="check-row" style={{ marginBottom: "8px" }}>
+                <label>Match:
+                  <select value={fieldForm.visibilityRules?.condition || "AND"} onChange={(e) => setFieldForm({ ...fieldForm, visibilityRules: { ...fieldForm.visibilityRules!, condition: e.target.value as any } })}>
+                    <option value="AND">ALL Rules (AND)</option>
+                    <option value="OR">ANY Rule (OR)</option>
+                  </select>
                 </label>
-              )}
+              </div>
+              {fieldForm.visibilityRules?.rules.map((rule, idx) => (
+                <div key={idx} className="check-row" style={{ marginBottom: "8px", gap: "8px" }}>
+                  <select value={rule.field} onChange={(e) => {
+                    const newRules = [...fieldForm.visibilityRules!.rules];
+                    newRules[idx].field = e.target.value;
+                    setFieldForm({ ...fieldForm, visibilityRules: { ...fieldForm.visibilityRules!, rules: newRules } });
+                  }}>
+                    <option value="">(Select Field)</option>
+                    {fields.filter(f => f.id !== editingFieldId).map(f => (
+                      <option key={f.id} value={f.fieldKey}>{f.label}</option>
+                    ))}
+                  </select>
+                  <select value={rule.operator} onChange={(e) => {
+                    const newRules = [...fieldForm.visibilityRules!.rules];
+                    newRules[idx].operator = e.target.value as any;
+                    setFieldForm({ ...fieldForm, visibilityRules: { ...fieldForm.visibilityRules!, rules: newRules } });
+                  }}>
+                    <option value="equals">Equals</option>
+                    <option value="not_equals">Not Equals</option>
+                    <option value="contains">Contains</option>
+                    <option value="gt">Greater Than</option>
+                    <option value="lt">Less Than</option>
+                    <option value="empty">Is Empty</option>
+                    <option value="not_empty">Not Empty</option>
+                  </select>
+                  {!["empty", "not_empty"].includes(rule.operator) && (
+                    <input value={rule.value || ""} onChange={(e) => {
+                      const newRules = [...fieldForm.visibilityRules!.rules];
+                      newRules[idx].value = e.target.value;
+                      setFieldForm({ ...fieldForm, visibilityRules: { ...fieldForm.visibilityRules!, rules: newRules } });
+                    }} placeholder="Value" style={{ flex: 1 }} />
+                  )}
+                  <button type="button" className="danger icon-button" onClick={() => {
+                    const newRules = fieldForm.visibilityRules!.rules.filter((_, i) => i !== idx);
+                    setFieldForm({ ...fieldForm, visibilityRules: { ...fieldForm.visibilityRules!, rules: newRules } });
+                  }}><X size={14} /></button>
+                </div>
+              ))}
+              <button type="button" className="secondary" onClick={() => {
+                const newRules = [...(fieldForm.visibilityRules?.rules || []), { field: "", operator: "equals", value: "" } as VisibilityRule];
+                setFieldForm({ ...fieldForm, visibilityRules: { condition: fieldForm.visibilityRules?.condition || "AND", rules: newRules } });
+              }} style={{ fontSize: "12px", padding: "4px 8px" }}><Plus size={12} /> Add Rule</button>
+            </div>
+
+            <div className="panel" style={{ marginTop: "12px", background: "rgba(0,0,0,0.02)" }}>
+              <h4 style={{ margin: "0 0 8px", fontSize: "14px" }}>Advanced Validations</h4>
+              <div className="check-row" style={{ gap: "16px" }}>
+                <label style={{ flex: 1 }}>Min (Length/Num)<input type="number" value={fieldForm.validations?.min ?? ""} onChange={(e) => setFieldForm({ ...fieldForm, validations: { ...fieldForm.validations, min: e.target.value ? Number(e.target.value) : undefined } })} /></label>
+                <label style={{ flex: 1 }}>Max (Length/Num)<input type="number" value={fieldForm.validations?.max ?? ""} onChange={(e) => setFieldForm({ ...fieldForm, validations: { ...fieldForm.validations, max: e.target.value ? Number(e.target.value) : undefined } })} /></label>
+              </div>
+              <label style={{ marginTop: "8px" }}>Regex Pattern<input value={fieldForm.validations?.regex || ""} onChange={(e) => setFieldForm({ ...fieldForm, validations: { ...fieldForm.validations, regex: e.target.value } })} placeholder="^[A-Z]+$" /></label>
             </div>
             <button type="submit">{editingFieldId ? <Save size={16} /> : <Plus size={16} />} {editingFieldId ? "Update field" : "Add field"}</button>
           </form>
@@ -1158,11 +1272,32 @@ function Admin() {
   );
 }
 
-function DynamicField({ field, value, onChange }: { field: FormField; value: unknown; onChange: (value: unknown) => void }) {
+function DynamicField({ field, value, onChange, allValues }: { field: FormField; value: unknown; onChange: (value: unknown) => void; allValues?: Record<string, any> }) {
+  if (field.fieldType === "hidden") {
+    return null;
+  }
+
+  if (field.fieldType === "calculated") {
+    const calc = calculateFieldValue(field.calculation || "", allValues || {});
+    if (value !== calc) {
+      setTimeout(() => onChange(calc), 0);
+    }
+    return (
+      <label>{field.label}
+        <input type="text" readOnly value={calc} className="calculated-field" style={{ backgroundColor: "rgba(0,0,0,0.05)", fontWeight: "bold", border: "none" }} />
+      </label>
+    );
+  }
+
+  const minProps = field.validations?.min !== undefined ? { [field.fieldType === "number" ? "min" : "minLength"]: field.validations.min } : {};
+  const maxProps = field.validations?.max !== undefined ? { [field.fieldType === "number" ? "max" : "maxLength"]: field.validations.max } : {};
+  const patternProps = field.validations?.regex ? { pattern: field.validations.regex } : {};
+  const commonProps = { required: field.required, ...minProps, ...maxProps, ...patternProps };
+
   if (field.fieldType === "select" || (Array.isArray(field.options) && field.options.length > 0)) {
     return (
       <label>{field.label}
-        <select value={String(value ?? "")} required={field.required} onChange={(event) => onChange(event.target.value)}>
+        <select value={String(value ?? "")} {...commonProps} onChange={(event) => onChange(event.target.value)}>
           <option value="">Select</option>
           {field.options.map((option) => <option key={option} value={option}>{option}</option>)}
         </select>
@@ -1171,15 +1306,15 @@ function DynamicField({ field, value, onChange }: { field: FormField; value: unk
   }
 
   if (field.fieldType === "textarea") {
-    return <label>{field.label}<textarea value={String(value ?? "")} required={field.required} onChange={(event) => onChange(event.target.value)} /></label>;
+    return <label>{field.label}<textarea value={String(value ?? "")} {...commonProps} onChange={(event) => onChange(event.target.value)} /></label>;
   }
 
   if (field.fieldType === "checkbox") {
-    return <label className="checkbox-field"><input type="checkbox" checked={Boolean(value)} onChange={(event) => onChange(event.target.checked)} /> {field.label}</label>;
+    return <label className="checkbox-field"><input type="checkbox" checked={Boolean(value)} {...commonProps} onChange={(event) => onChange(event.target.checked)} /> {field.label}</label>;
   }
 
   const inputType = field.fieldType === "phone" ? "tel" : field.fieldType;
-  return <label>{field.label}<input type={inputType} value={String(value ?? "")} required={field.required} onChange={(event) => onChange(event.target.value)} /></label>;
+  return <label>{field.label}<input type={inputType} value={String(value ?? "")} {...commonProps} onChange={(event) => onChange(event.target.value)} /></label>;
 }
 
 function CustomFieldChips({ values, fields }: { values: Record<string, unknown>; fields: FormField[] }) {
@@ -1238,6 +1373,26 @@ function OnSpotForm({
     });
     if (changed) setValues(newValues);
   }, [values, activeFields]);
+
+  useEffect(() => {
+    if (isPublic) {
+      const params = new URLSearchParams(window.location.search);
+      setValues(prev => {
+        const next = { ...prev };
+        let changed = false;
+        activeFields.forEach(f => {
+          if (f.fieldType === "hidden") {
+            const val = params.get(f.fieldKey);
+            if (val && next[f.fieldKey] !== val) {
+              next[f.fieldKey] = val;
+              changed = true;
+            }
+          }
+        });
+        return changed ? next : prev;
+      });
+    }
+  }, [isPublic, activeFields]);
 
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -1305,6 +1460,7 @@ function OnSpotForm({
             field={field}
             value={values[field.fieldKey]}
             onChange={(value) => setValues({ ...values, [field.fieldKey]: value })}
+            allValues={values}
           />
         ))}
       </div>
@@ -1377,6 +1533,24 @@ function PublicTransfer({ onBack, globalSettings }: { onBack: () => void; global
     });
     if (changed) setRecipientValues(newValues);
   }, [recipientValues, activeFields]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setRecipientValues(prev => {
+      const next = { ...prev };
+      let changed = false;
+      activeFields.forEach(f => {
+        if (f.fieldType === "hidden") {
+          const val = params.get(f.fieldKey);
+          if (val && next[f.fieldKey] !== val) {
+            next[f.fieldKey] = val;
+            changed = true;
+          }
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [activeFields]);
 
   useEffect(() => {
     api<{ fields: FormField[] }>("/form-fields/public")
@@ -1463,6 +1637,7 @@ function PublicTransfer({ onBack, globalSettings }: { onBack: () => void; global
                 field={field}
                 value={recipientValues[field.fieldKey]}
                 onChange={(value) => setRecipientValues({ ...recipientValues, [field.fieldKey]: value })}
+                allValues={recipientValues}
               />
             ))}
           </div>
@@ -1936,12 +2111,13 @@ function AttendeeDatabase({
 
               <form onSubmit={saveEdit} className="stack">
                 <div className="form-grid">
-                  {activeFields.map((field) => (
+                  {activeFields.filter(f => isFieldVisible(f, activeFields, editValues)).map((field) => (
                     <DynamicField
                       key={field.id}
                       field={field}
                       value={editValues[field.fieldKey]}
                       onChange={(value) => setEditValues({ ...editValues, [field.fieldKey]: value })}
+                      allValues={editValues}
                     />
                   ))}
                 </div>
@@ -1966,12 +2142,13 @@ function AttendeeDatabase({
                 <form onSubmit={executeTransfer} className="stack" style={{ marginTop: "10px" }}>
                   <h4 style={{ margin: "0", fontSize: "14px", fontWeight: "800" }}>Recipient Dynamic Information</h4>
                   <div className="form-grid" style={{ gridTemplateColumns: "1fr", gap: "14px" }}>
-                    {activeFields.map((field) => (
+                    {activeFields.filter(f => isFieldVisible(f, activeFields, recipientValues)).map((field) => (
                       <DynamicField
                         key={field.id}
                         field={field}
                         value={recipientValues[field.fieldKey]}
                         onChange={(value) => setRecipientValues({ ...recipientValues, [field.fieldKey]: value })}
+                        allValues={recipientValues}
                       />
                     ))}
                   </div>
