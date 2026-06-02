@@ -125,6 +125,37 @@ const DEFAULT_FIELDS: FormField[] = [
   { id: "f-dept", fieldKey: "department", label: "Booking ID / Area Code", fieldType: "text", required: false, options: [], sortOrder: 5, active: true, showInList: true }
 ];
 
+export const applyTheme = (settings: Record<string, string>) => {
+  const root = document.documentElement.style;
+  if (settings.primary_color) root.setProperty("--color-primary", settings.primary_color);
+  if (settings.color_brand_accent) root.setProperty("--color-brand-accent", settings.color_brand_accent);
+  else if (settings.primary_color) root.setProperty("--color-brand-accent", settings.primary_color);
+  if (settings.primary_color && !settings.color_brand_accent) root.setProperty("--color-brand-bg", settings.primary_color);
+
+  if (settings.color_text_accent) root.setProperty("--color-text-accent", settings.color_text_accent);
+  else if (settings.color_brand_accent) root.setProperty("--color-text-accent", settings.color_brand_accent);
+  else if (settings.primary_color) root.setProperty("--color-text-accent", settings.primary_color);
+
+  if (settings.color_surface) root.setProperty("--color-surface", settings.color_surface);
+  if (settings.color_bg_gray) root.setProperty("--color-bg-gray", settings.color_bg_gray);
+  if (settings.color_border) root.setProperty("--color-border", settings.color_border);
+  if (settings.color_text_dark) root.setProperty("--color-text-dark", settings.color_text_dark);
+  if (settings.color_text_muted) root.setProperty("--color-text-muted", settings.color_text_muted);
+
+  if (settings.font_family_main) root.setProperty("--font-family-main", `${settings.font_family_main}, sans-serif`);
+  if (settings.font_family_heading) root.setProperty("--font-family-heading", `${settings.font_family_heading}, sans-serif`);
+
+  if (settings.color_nav_bg) root.setProperty("--color-nav-bg", settings.color_nav_bg);
+  else root.setProperty("--color-nav-bg", settings.color_brand_bg || settings.primary_color || "var(--color-surface)");
+  if (settings.color_nav_text) root.setProperty("--color-nav-text", settings.color_nav_text);
+  
+  if (settings.color_secondary_btn) root.setProperty("--color-secondary-btn", settings.color_secondary_btn);
+  if (settings.color_secondary_btn_text) root.setProperty("--color-secondary-btn-text", settings.color_secondary_btn_text);
+
+  if (settings.login_background) root.setProperty("--login-background", settings.login_background);
+  else root.setProperty("--login-background", "var(--color-brand-bg)");
+};
+
 export function App() {
   const [session, setSessionState] = useState<Session | null>(getSession());
   const [view, setView] = useState<View>("dashboard");
@@ -155,11 +186,7 @@ export function App() {
       try {
         const parsed = JSON.parse(cachedSettings);
         setGlobalSettings(parsed);
-        if (parsed.primary_color) {
-          document.documentElement.style.setProperty("--color-primary", parsed.primary_color);
-          document.documentElement.style.setProperty("--color-brand-accent", parsed.primary_color);
-          document.documentElement.style.setProperty("--color-brand-bg", parsed.primary_color);
-        }
+        applyTheme(parsed);
         if (parsed.app_name) document.title = parsed.app_name;
         setSettingsLoaded(true);
       } catch (e) {}
@@ -168,11 +195,7 @@ export function App() {
     api<{ settings: Record<string, string> }>("/settings/public").then((res) => {
       localStorage.setItem("cached_public_settings", JSON.stringify(res.settings));
       setGlobalSettings(res.settings);
-      if (res.settings.primary_color) {
-        document.documentElement.style.setProperty("--color-primary", res.settings.primary_color);
-        document.documentElement.style.setProperty("--color-brand-accent", res.settings.primary_color);
-        document.documentElement.style.setProperty("--color-brand-bg", res.settings.primary_color);
-      }
+      applyTheme(res.settings);
       if (res.settings.app_name) {
         document.title = res.settings.app_name;
       }
@@ -330,18 +353,48 @@ function Login({
     }
   }
 
+  const loginBg = globalSettings.login_background || "";
+  const rawUrl = loginBg.match(/url\(['"]?(.*?)['"]?\)/)?.[1] || loginBg;
+  const isVideoBg = rawUrl.includes('.mp4') || rawUrl.includes('.webm');
+
   return (
     <main className="login-page">
-      <form onSubmit={submit} className="login-panel">
+      {isVideoBg && (
+        <video 
+          autoPlay 
+          loop 
+          muted 
+          playsInline 
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            minWidth: '100%',
+            minHeight: '100%',
+            width: 'auto',
+            height: 'auto',
+            transform: 'translate(-50%, -50%)',
+            objectFit: 'cover',
+            zIndex: 0
+          }}
+        >
+          <source src={rawUrl} />
+        </video>
+      )}
+      <form onSubmit={submit} className="login-panel" style={{ zIndex: 1, position: 'relative' }}>
         <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
           {globalSettings.logo_url && <img src={globalSettings.logo_url} alt="Logo" style={{ width: 48, height: 48, borderRadius: 8, objectFit: "contain", marginBottom: "1rem" }} />}
-          <p className="eyebrow">{globalSettings.event_name || "Event operations"}</p>
-          <h1 style={{ fontSize: "28px", fontWeight: "900", letterSpacing: "-0.03em", marginTop: "4px" }}>{globalSettings.app_name || "Amaze Reg Desk"}</h1>
+          <p className="eyebrow">{globalSettings.app_name || "Amaze Reg Desk"}</p>
+          <h1 style={{ fontSize: "36px", fontWeight: "900", letterSpacing: "0.02em", marginTop: "4px", fontFamily: "zentry, sans-serif", textTransform: "uppercase" }}>{globalSettings.event_name || "Event operations"}</h1>
         </div>
-        <label>Email<input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required /></label>
-        <label>Password<input value={password} onChange={(event) => setPassword(event.target.value)} type="password" required /></label>
-        {error && <p className="error">{error}</p>}
-        <button type="submit" style={{ width: "100%", marginTop: "10px" }}>Sign in</button>
+        {(globalSettings.enable_email_login !== "false" || window.location.hash === "#admin") && (
+          <>
+            <label>Email<input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required /></label>
+            <label>Password<input value={password} onChange={(event) => setPassword(event.target.value)} type="password" required /></label>
+            {error && <p className="error">{error}</p>}
+            <button type="submit" style={{ width: "100%", marginTop: "10px" }}>Sign in</button>
+          </>
+        )}
         <div style={{ marginTop: "24px", display: "flex", gap: "12px", width: "100%" }}>
           {globalSettings.public_registrations_enabled !== "false" && (
             <button type="button" className="secondary" style={{ flex: 1 }} onClick={onNavigateRegister}>Register</button>
@@ -1080,7 +1133,7 @@ function Admin({ globalSettings }: { globalSettings: Record<string, string> }) {
       {tab === "registrations" && (
         <div className="admin-grid">
           <div className="panel">
-            <h3>Excel import</h3>
+            <h4 style={{ margin: "0 0 10px 0", display: "flex", alignItems: "center", gap: "6px" }}>Excel import</h4>
             <input type="file" accept=".xlsx" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
             <div className="row">
               <button className="secondary" onClick={() => upload("/imports/preview")}><Upload size={16} /> Preview</button>
@@ -1089,7 +1142,7 @@ function Admin({ globalSettings }: { globalSettings: Record<string, string> }) {
           </div>
           {globalSettings.admin_onspot_enabled !== "false" && (
             <div className="panel wide-panel">
-              <OnSpotForm session={getSession()!} fields={fields} loadAttendees={loadAttendees} />
+              <OnSpotForm session={getSession()!} fields={fields} loadAttendees={loadAttendees} globalSettings={globalSettings} />
             </div>
           )}
           <div className="panel full-span">
@@ -1487,7 +1540,7 @@ function Admin({ globalSettings }: { globalSettings: Record<string, string> }) {
           )}
 
       {tab === "verification" && (
-        <VerificationQueue session={getSession()!} attendees={attendees} loadAttendees={loadAttendees} />
+        <VerificationQueue session={getSession()!} attendees={attendees} loadAttendees={loadAttendees} globalSettings={globalSettings} />
       )}
     </section>
   );
@@ -1560,13 +1613,15 @@ function OnSpotForm({
   fields,
   loadAttendees,
   onSaved,
-  isPublic = false
+  isPublic = false,
+  globalSettings
 }: {
   session?: Session;
   fields: FormField[];
   loadAttendees?: () => void;
   onSaved?: () => void;
   isPublic?: boolean;
+  globalSettings?: Record<string, string>;
 }) {
   const [values, setValues] = useState<Record<string, any>>({});
   const [paymentProof, setPaymentProof] = useState<string | null>(null);
@@ -1685,16 +1740,18 @@ function OnSpotForm({
           />
         ))}
       </div>
-      <div className="panel" style={{ marginTop: "10px" }}>
-        <h4 style={{ margin: "0 0 8px", fontSize: "14px", fontWeight: "800" }}>Payment Proof Verification</h4>
-        <input type="file" accept="image/*" required={isPublic} onChange={handleFileChange} />
-        {paymentProof && (
-          <div style={{ marginTop: "14px" }}>
-            <p className="field-caption">Payment Preview:</p>
-            <img src={paymentProof} alt="Payment Proof Preview" style={{ maxWidth: "100%", maxHeight: "160px", borderRadius: "10px" }} />
-          </div>
-        )}
-      </div>
+      {(!globalSettings || globalSettings.require_payment_proof !== "false") && (
+        <div className="panel" style={{ marginTop: "10px" }}>
+          <h4 style={{ margin: "0 0 8px", fontSize: "14px", fontWeight: "800" }}>Payment Proof Verification</h4>
+          <input type="file" accept="image/*" required={isPublic} onChange={handleFileChange} />
+          {paymentProof && (
+            <div style={{ marginTop: "14px" }}>
+              <p className="field-caption">Payment Preview:</p>
+              <img src={paymentProof} alt="Payment Proof Preview" style={{ maxWidth: "100%", maxHeight: "160px", borderRadius: "10px" }} />
+            </div>
+          )}
+        </div>
+      )}
       <button type="submit" style={{ width: "100%", minHeight: "46px" }}><Save size={16} /> {isPublic ? "Submit Registration" : "Save Attendee"}</button>
     </form>
   );
@@ -1719,7 +1776,7 @@ function PublicRegister({ onBack, globalSettings }: { onBack: () => void; global
           <h1 style={{ fontSize: "28px", fontWeight: "900", letterSpacing: "-0.03em", marginTop: "4px" }}>Register for {globalSettings.app_name || "Amaze Reg Desk"}</h1>
         </div>
         <button type="button" className="secondary" style={{ marginBottom: "20px" }} onClick={onBack}><X size={16} /> Back to Sign In</button>
-        <OnSpotForm fields={fields} isPublic={true} />
+        <OnSpotForm fields={fields} isPublic={true} globalSettings={globalSettings} />
       </div>
     </main>
   );
@@ -1863,16 +1920,18 @@ function PublicTransfer({ onBack, globalSettings }: { onBack: () => void; global
             ))}
           </div>
 
-          <div className="panel" style={{ marginTop: "10px" }}>
-            <h4 style={{ margin: "0 0 8px", fontSize: "14px", fontWeight: "800" }}>Transfer Fee / Payment Proof Upload</h4>
-            <input type="file" accept="image/*" required onChange={handleFileChange} />
-            {paymentProof && (
-              <div style={{ marginTop: "14px" }}>
-                <p className="field-caption">Payment Preview:</p>
-                <img src={paymentProof} alt="Payment Proof Preview" style={{ maxWidth: "100%", maxHeight: "160px", borderRadius: "10px" }} />
-              </div>
-            )}
-          </div>
+          {globalSettings.require_payment_proof !== "false" && (
+            <div className="panel" style={{ marginTop: "10px" }}>
+              <h4 style={{ margin: "0 0 8px", fontSize: "14px", fontWeight: "800" }}>Transfer Fee / Payment Proof Upload</h4>
+              <input type="file" accept="image/*" required onChange={handleFileChange} />
+              {paymentProof && (
+                <div style={{ marginTop: "14px" }}>
+                  <p className="field-caption">Payment Preview:</p>
+                  <img src={paymentProof} alt="Payment Proof Preview" style={{ maxWidth: "100%", maxHeight: "160px", borderRadius: "10px" }} />
+                </div>
+              )}
+            </div>
+          )}
           <button type="submit" style={{ width: "100%", minHeight: "46px" }}><Send size={16} /> Submit Transfer Request</button>
         </form>
       </div>
@@ -1884,11 +1943,13 @@ function PublicTransfer({ onBack, globalSettings }: { onBack: () => void; global
 function VerificationQueue({
   session,
   attendees,
-  loadAttendees
+  loadAttendees,
+  globalSettings
 }: {
   session: Session;
   attendees: any[];
   loadAttendees: () => void;
+  globalSettings?: Record<string, string>;
 }) {
   const [selectedAttendee, setSelectedAttendee] = useState<any | null>(null);
   const [message, setMessage] = useState("");
@@ -2075,9 +2136,9 @@ function VolunteerWorkstation({ session, globalSettings }: { session: Session; g
       {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />}
 
       {tab === "scanner" && <Scanner session={session} />}
-      {tab === "database" && <AttendeeDatabase session={session} fields={fields} attendees={attendees} loadAttendees={loadAttendees} />}
-      {tab === "verification" && <VerificationQueue session={session} attendees={attendees} loadAttendees={loadAttendees} />}
-      {tab === "onspot" && globalSettings.volunteer_onspot_enabled !== "false" && <OnSpotForm session={session} fields={fields} loadAttendees={loadAttendees} onSaved={() => setTab("database")} />}
+      {tab === "database" && <AttendeeDatabase session={session} fields={fields} attendees={attendees} loadAttendees={loadAttendees} globalSettings={globalSettings} />}
+      {tab === "verification" && <VerificationQueue session={session} attendees={attendees} loadAttendees={loadAttendees} globalSettings={globalSettings} />}
+      {tab === "onspot" && globalSettings.volunteer_onspot_enabled !== "false" && <OnSpotForm session={session} fields={fields} loadAttendees={loadAttendees} onSaved={() => setTab("database")} globalSettings={globalSettings} />}
     </section>
   );
 }
@@ -2087,12 +2148,14 @@ function AttendeeDatabase({
   session,
   fields,
   attendees,
-  loadAttendees
+  loadAttendees,
+  globalSettings
 }: {
   session: Session;
   fields: FormField[];
   attendees: any[];
   loadAttendees: () => void;
+  globalSettings?: Record<string, string>;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<string>("");
@@ -2413,15 +2476,17 @@ function AttendeeDatabase({
                     ))}
                   </div>
 
-                  <div className="panel" style={{ background: "white", padding: "16px", marginTop: "10px" }}>
-                    <h4 style={{ margin: "0 0 10px 0", fontSize: "13px" }}>Transfer Payment Proof</h4>
-                    <input type="file" accept="image/*" required onChange={handleTransferFile} />
-                    {paymentProof && (
-                      <div style={{ marginTop: "10px" }}>
-                        <img src={paymentProof} alt="Payment Proof" style={{ maxWidth: "100px", maxHeight: "80px", borderRadius: "6px" }} />
-                      </div>
-                    )}
-                  </div>
+                  {(!globalSettings || globalSettings.require_payment_proof !== "false") && (
+                    <div className="panel" style={{ background: "white", padding: "16px", marginTop: "10px" }}>
+                      <h4 style={{ margin: "0 0 10px 0", fontSize: "13px" }}>Transfer Payment Proof</h4>
+                      <input type="file" accept="image/*" required onChange={handleTransferFile} />
+                      {paymentProof && (
+                        <div style={{ marginTop: "10px" }}>
+                          <img src={paymentProof} alt="Payment Proof" style={{ maxWidth: "100px", maxHeight: "80px", borderRadius: "6px" }} />
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <button type="submit" style={{ background: "#db2777", width: "100%" }}><Send size={15} /> Confirm Ticket Transfer</button>
                 </form>
@@ -2598,6 +2663,90 @@ function BrandingSettingsPanel() {
     }).catch(() => undefined);
   }, []);
 
+  useEffect(() => {
+    applyTheme(settings);
+  }, [settings]);
+
+  const resetToDefaultTheme = () => {
+    setSettings(prev => ({
+      ...prev,
+      font_family_main: '"General Sans", "circular-web"',
+      font_family_heading: 'zentry',
+      color_surface: '#0a0a0a',
+      color_bg_gray: '#000000',
+      color_border: '#262626',
+      color_text_dark: '#DFDFF0',
+      color_text_muted: '#8e983f',
+      color_brand_accent: '#3b82f6',
+      color_text_accent: '#3b82f6',
+      primary_color: '#000000',
+      color_nav_bg: '#000000',
+      color_nav_text: '#ffffff',
+      color_secondary_btn: '#111111',
+      color_secondary_btn_text: '#ffffff',
+      login_background: '#0a0a0a'
+    }));
+  };
+
+  const saveThemePack = () => {
+    const packName = prompt("Enter a name for this theme pack:");
+    if (!packName) return;
+    const currentTheme = {
+      font_family_main: settings.font_family_main || '"General Sans", "circular-web"',
+      font_family_heading: settings.font_family_heading || 'zentry',
+      color_surface: settings.color_surface || '#0a0a0a',
+      color_bg_gray: settings.color_bg_gray || '#000000',
+      color_border: settings.color_border || '#262626',
+      color_text_dark: settings.color_text_dark || '#DFDFF0',
+      color_text_muted: settings.color_text_muted || '#8e983f',
+      color_brand_accent: settings.color_brand_accent || '#3b82f6',
+      color_text_accent: settings.color_text_accent || '#3b82f6',
+      primary_color: settings.primary_color || '#000000',
+      color_nav_bg: settings.color_nav_bg || '#000000',
+      color_nav_text: settings.color_nav_text || '#ffffff',
+      color_secondary_btn: settings.color_secondary_btn || '#111111',
+      color_secondary_btn_text: settings.color_secondary_btn_text || '#ffffff',
+      login_background: settings.login_background || '#0a0a0a'
+    };
+    const packs = settings.saved_theme_packs ? JSON.parse(settings.saved_theme_packs) : {};
+    packs[packName] = currentTheme;
+    setSettings(prev => ({ ...prev, saved_theme_packs: JSON.stringify(packs) }));
+    alert(`Theme pack '${packName}' saved locally. Click 'Save Settings' below to persist it to the server!`);
+  };
+
+  const loadThemePack = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const packName = e.target.value;
+    if (!packName) return;
+    
+    if (packName === "__classic_light") {
+      setSettings(prev => ({
+        ...prev,
+        font_family_main: "'Inter', 'Outfit', system-ui",
+        font_family_heading: "'Outfit', system-ui",
+        color_surface: '#ffffff',
+        color_bg_gray: '#f8fafc',
+        color_border: '#e2e8f0',
+        color_text_dark: '#0f172a',
+        color_text_muted: '#64748b',
+        color_brand_accent: '#4f46e5',
+        color_text_accent: '#4f46e5',
+        primary_color: '#1e1b4b',
+        color_nav_bg: '#1e1b4b',
+        color_nav_text: '#ffffff',
+        color_secondary_btn: '#ffffff',
+        color_secondary_btn_text: '#0f172a',
+        login_background: '#1e1b4b'
+      }));
+      return;
+    }
+
+    const packs = settings.saved_theme_packs ? JSON.parse(settings.saved_theme_packs) : {};
+    const pack = packs[packName];
+    if (pack) {
+      setSettings(prev => ({ ...prev, ...pack }));
+    }
+  };
+
   async function saveSettings(event: FormEvent) {
     event.preventDefault();
     setMessage("");
@@ -2607,11 +2756,7 @@ function BrandingSettingsPanel() {
         body: JSON.stringify(settings)
       });
       setMessage("Settings saved. Refresh the page to see global changes.");
-      if (settings.primary_color) {
-        document.documentElement.style.setProperty("--color-primary", settings.primary_color);
-        document.documentElement.style.setProperty("--color-brand-accent", settings.primary_color);
-        document.documentElement.style.setProperty("--color-brand-bg", settings.primary_color);
-      }
+      applyTheme(settings);
       if (settings.app_name) document.title = settings.app_name;
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Failed to save settings.");
@@ -2640,6 +2785,76 @@ function BrandingSettingsPanel() {
           </div>
 
           <hr />
+          <h3>Advanced Theme Engine</h3>
+          <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
+            <button type="button" className="secondary" onClick={resetToDefaultTheme}>Reset to Default</button>
+            <button type="button" className="secondary" onClick={saveThemePack}>Save Theme Pack</button>
+            <select onChange={loadThemePack} defaultValue="" style={{ flex: 1, padding: "0 10px" }}>
+              <option value="" disabled>Load Theme Pack...</option>
+              <option value="__classic_light">Classic Light (Original)</option>
+              {settings.saved_theme_packs && Object.keys(JSON.parse(settings.saved_theme_packs)).map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-grid">
+            <label>Main Font
+              <select value={settings.font_family_main || '"General Sans", "circular-web"'} onChange={e => setSettings({ ...settings, font_family_main: e.target.value })}>
+                <option value='"General Sans", "circular-web"'>General Sans</option>
+                <option value="zentry">Zentry</option>
+                <option value="'Outfit'">Outfit</option>
+                <option value="'Inter'">Inter</option>
+                <option value="'robert-medium'">Robert</option>
+              </select>
+            </label>
+            <label>Heading Font
+              <select value={settings.font_family_heading || "zentry"} onChange={e => setSettings({ ...settings, font_family_heading: e.target.value })}>
+                <option value="zentry">Zentry</option>
+                <option value='"General Sans", "circular-web"'>General Sans</option>
+                <option value="'Outfit'">Outfit</option>
+                <option value="'Inter'">Inter</option>
+                <option value="'robert-medium'">Robert</option>
+              </select>
+            </label>
+            <label>Canvas Background
+              <input type="color" value={settings.color_bg_gray || "#000000"} onChange={e => setSettings({ ...settings, color_bg_gray: e.target.value })} style={{ height: "42px", padding: "4px" }} />
+            </label>
+            <label>Surface (Panels)
+              <input type="color" value={settings.color_surface || "#0a0a0a"} onChange={e => setSettings({ ...settings, color_surface: e.target.value })} style={{ height: "42px", padding: "4px" }} />
+            </label>
+            <label>Border Color
+              <input type="color" value={settings.color_border || "#262626"} onChange={e => setSettings({ ...settings, color_border: e.target.value })} style={{ height: "42px", padding: "4px" }} />
+            </label>
+            <label>Text Dark
+              <input type="color" value={settings.color_text_dark || "#DFDFF0"} onChange={e => setSettings({ ...settings, color_text_dark: e.target.value })} style={{ height: "42px", padding: "4px" }} />
+            </label>
+            <label>Text Muted
+              <input type="color" value={settings.color_text_muted || "#8e983f"} onChange={e => setSettings({ ...settings, color_text_muted: e.target.value })} style={{ height: "42px", padding: "4px" }} />
+            </label>
+            <label>Button/Checkbox Accent
+              <input type="color" value={settings.color_brand_accent || "#3b82f6"} onChange={e => setSettings({ ...settings, color_brand_accent: e.target.value })} style={{ height: "42px", padding: "4px" }} />
+            </label>
+            <label>Text Accent
+              <input type="color" value={settings.color_text_accent || "#3b82f6"} onChange={e => setSettings({ ...settings, color_text_accent: e.target.value })} style={{ height: "42px", padding: "4px" }} />
+            </label>
+            <label>Menu Bar Background
+              <input type="color" value={settings.color_nav_bg || "#000000"} onChange={e => setSettings({ ...settings, color_nav_bg: e.target.value })} style={{ height: "42px", padding: "4px" }} />
+            </label>
+            <label>Menu Bar Text
+              <input type="color" value={settings.color_nav_text || "#ffffff"} onChange={e => setSettings({ ...settings, color_nav_text: e.target.value })} style={{ height: "42px", padding: "4px" }} />
+            </label>
+            <label>Secondary Button Background
+              <input type="color" value={settings.color_secondary_btn || "#111111"} onChange={e => setSettings({ ...settings, color_secondary_btn: e.target.value })} style={{ height: "42px", padding: "4px" }} />
+            </label>
+            <label>Secondary Button Text
+              <input type="color" value={settings.color_secondary_btn_text || "#ffffff"} onChange={e => setSettings({ ...settings, color_secondary_btn_text: e.target.value })} style={{ height: "42px", padding: "4px" }} />
+            </label>
+            <label style={{ gridColumn: "1 / -1" }}>Login Background (Color/Gradient/URL)
+              <input type="text" value={settings.login_background || ""} onChange={e => setSettings({ ...settings, login_background: e.target.value })} placeholder="e.g. #0a0a0a, linear-gradient(...), or url(...) no-repeat center/cover" />
+            </label>
+          </div>
+
+          <hr />
           <h3>Public Features</h3>
           <div className="form-grid">
             <label className="checkbox-field" style={{ fontSize: "14px" }}>
@@ -2649,6 +2864,14 @@ function BrandingSettingsPanel() {
             <label className="checkbox-field" style={{ fontSize: "14px" }}>
               <input type="checkbox" checked={settings.public_transfers_enabled !== "false"} onChange={e => setSettings({ ...settings, public_transfers_enabled: e.target.checked ? "true" : "false" })} />
               Enable Public Ticket Transfers
+            </label>
+            <label className="checkbox-field" style={{ fontSize: "14px" }}>
+              <input type="checkbox" checked={settings.enable_email_login !== "false"} onChange={e => setSettings({ ...settings, enable_email_login: e.target.checked ? "true" : "false" })} />
+              Enable Email Login
+            </label>
+            <label className="checkbox-field" style={{ fontSize: "14px", gridColumn: "1 / -1" }}>
+              <input type="checkbox" checked={settings.require_payment_proof !== "false"} onChange={e => setSettings({ ...settings, require_payment_proof: e.target.checked ? "true" : "false" })} />
+              Require Payment Proof Verification
             </label>
           </div>
 

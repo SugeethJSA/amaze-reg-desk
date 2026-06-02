@@ -2,27 +2,63 @@
    AMAZE REG DESK — Design System
    ============================================================ */
 
+@import url("https://fonts.cdnfonts.com/css/general-sans");
+
+@font-face {
+  font-family: "circular-web";
+  src: url("/fonts/circularweb-book.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "general";
+  src: url("/fonts/general.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "robert-medium";
+  src: url("/fonts/robert-medium.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "robert-regular";
+  src: url("/fonts/robert-regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "zentry";
+  src: url("/fonts/zentry-regular.woff2") format("woff2");
+  font-display: swap;
+}
+
 :root {
-  --color-brand-bg: #1e1b4b;
-  --color-brand-accent: #4f46e5;
-  --color-brand-accent-hover: #4338ca;
-  --color-success: #10b981;
-  --color-success-light: #ecfdf5;
+  --color-nav-bg: #000000;
+  --color-nav-text: #ffffff;
+  --color-secondary-btn: #111111;
+  --color-secondary-btn-text: #ffffff;
+  --login-background: var(--color-bg-gray);
+  --color-brand-bg: #000000;
+  --color-brand-accent: #3b82f6;
+  --color-brand-accent-hover: #5724ff;
+  --color-text-accent: #3b82f6;
+  --color-success: #00ff41;
+  --color-success-light: rgba(0, 255, 65, 0.1);
   --color-danger: #ef4444;
-  --color-danger-light: #fef2f2;
-  --color-warning: #f59e0b;
-  --color-warning-light: #fef3c7;
-  --color-info: #6366f1;
-  --color-info-light: #eef2ff;
-  --color-text-dark: #0f172a;
-  --color-text-muted: #64748b;
-  --color-bg-gray: #f8fafc;
-  --color-border: #e2e8f0;
-  --color-surface: #ffffff;
+  --color-danger-light: rgba(239, 68, 68, 0.1);
+  --color-warning: #edff66;
+  --color-warning-light: rgba(237, 255, 102, 0.1);
+  --color-info: #4FB7DD;
+  --color-info-light: rgba(79, 183, 221, 0.1);
+  --color-text-dark: #DFDFF0;
+  --color-text-muted: #8e983f;
+  --color-bg-gray: #000000;
+  --color-border: rgba(255, 255, 255, 0.15);
+  --color-surface: #0a0a0a;
+  --font-family-main: "General Sans", "circular-web", sans-serif;
+  --font-family-heading: "zentry", sans-serif;
 
   color: var(--color-text-dark);
   background: var(--color-bg-gray);
-  font-family: 'Inter', 'Outfit', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-family-main);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -82,15 +118,15 @@ button:active,
 
 button.secondary,
 .button.secondary {
-  background: #f1f5f9;
-  color: #334155;
+  background: var(--color-secondary-btn);
+  color: var(--color-secondary-btn-text);
   box-shadow: none;
   border: 1px solid var(--color-border);
 }
 
 button.secondary:hover,
 .button.secondary:hover {
-  background: #e2e8f0;
+  background: color-mix(in srgb, var(--color-secondary-btn) 85%, var(--color-text-dark));
   box-shadow: none;
   transform: translateY(-1px);
 }
@@ -110,10 +146,10 @@ button.danger:hover {
 
 button.icon-button {
   aspect-ratio: 1;
-  background: #f1f5f9;
+  background: var(--color-secondary-btn);
   border-radius: 50%;
   box-shadow: none;
-  color: #475569;
+  color: var(--color-secondary-btn-text);
   min-height: 38px;
   width: 38px;
   padding: 0;
@@ -121,14 +157,14 @@ button.icon-button {
 }
 
 button.icon-button:hover {
-  background: #e2e8f0;
+  background: color-mix(in srgb, var(--color-secondary-btn) 85%, var(--color-text-dark));
   transform: none;
 }
 
 input,
 select,
 textarea {
-  background: #ffffff;
+  background: var(--color-surface);
   border: 1.5px solid var(--color-border);
   border-radius: 12px;
   color: var(--color-text-dark);
@@ -142,9 +178,9 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: var(--color-brand-accent);
+  border-color: var(--color-text-accent);
   box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
-  background: #ffffff;
+  background: var(--color-surface);
 }
 
 textarea {
@@ -164,7 +200,7 @@ label {
 input[type="checkbox"] {
   width: auto;
   min-height: auto;
-  accent-color: var(--color-brand-accent);
+  accent-color: var(--color-text-accent);
   cursor: pointer;
 }
 
@@ -181,12 +217,12 @@ input[type="file"] {
 table {
   border-collapse: collapse;
   width: 100%;
-  background: white;
+  background: var(--color-surface);
 }
 
 th,
 td {
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--color-border);
   padding: 14px 18px;
   text-align: left;
   font-size: 14px;
@@ -198,7 +234,7 @@ th {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  background: #f8fafc;
+  background: var(--color-bg-gray);
   position: sticky;
   top: 0;
   z-index: 1;
@@ -210,7 +246,7 @@ th[style*="cursor"] {
 }
 
 th[style*="cursor"]:hover {
-  color: var(--color-brand-accent);
+  color: var(--color-text-accent);
 }
 
 tr {
@@ -218,7 +254,7 @@ tr {
 }
 
 tbody tr:hover {
-  background: #f8fafc;
+  background: var(--color-bg-gray);
 }
 
 /* ============================================================
@@ -255,8 +291,8 @@ tbody tr:hover {
 }
 
 .status-badge.transferred {
-  background: #f1f5f9;
-  color: #475569;
+  background: #111111;
+  color: var(--color-text-dark);
 }
 
 /* ============================================================
@@ -273,8 +309,8 @@ tbody tr:hover {
 
 .app-header {
   align-items: center;
-  background: var(--color-brand-bg);
-  color: white;
+  background: var(--color-nav-bg);
+  color: var(--color-nav-text);
   display: grid;
   gap: 20px;
   grid-template-columns: minmax(180px, 0.7fr) minmax(320px, 1.6fr) minmax(200px, 0.7fr);
@@ -307,11 +343,12 @@ tbody tr:hover {
 }
 
 .brand h1 {
-  font-size: 18px;
+  font-size: 22px;
   margin: 0;
   font-weight: 800;
-  letter-spacing: -0.02em;
-  font-family: 'Outfit', system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  font-family: var(--font-family-heading);
+  text-transform: uppercase;
 }
 
 .brand p.eyebrow,
@@ -319,8 +356,13 @@ tbody tr:hover {
   margin: 0;
   font-size: 10px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--color-text-muted);
   text-transform: uppercase;
+}
+
+.app-header .eyebrow {
+  color: var(--color-nav-text);
+  opacity: 0.7;
   letter-spacing: 0.08em;
 }
 
@@ -352,7 +394,8 @@ tbody tr:hover {
   background: transparent;
   border-radius: 9999px;
   box-shadow: none;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--color-nav-text);
+  opacity: 0.8;
   min-height: 38px;
   padding: 0 18px;
   font-size: 13px;
@@ -361,14 +404,15 @@ tbody tr:hover {
 }
 
 .top-nav button:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: white;
+  background: color-mix(in srgb, var(--color-nav-text) 10%, transparent);
+  color: var(--color-nav-text);
+  opacity: 1;
   transform: none;
 }
 
 .top-nav button.active {
   background: var(--color-brand-accent);
-  color: white;
+  color: #ffffff;
   box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
 }
 
@@ -391,17 +435,18 @@ tbody tr:hover {
 .account-bar p.eyebrow {
   margin: 0;
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--color-nav-text);
+  opacity: 0.6;
 }
 
 .account-bar button.icon-button {
-  background: rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--color-nav-text) 10%, transparent);
   border: 0;
-  color: white;
+  color: var(--color-nav-text);
 }
 
 .account-bar button.icon-button:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: color-mix(in srgb, var(--color-nav-text) 20%, transparent);
 }
 
 /* ============================================================
@@ -474,7 +519,7 @@ tbody tr:hover {
    ============================================================ */
 
 .panel {
-  background: white;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 20px;
   padding: 24px;
@@ -526,7 +571,7 @@ tbody tr:hover {
 }
 
 .admin-tabs {
-  background: white;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 16px;
   display: flex;
@@ -556,14 +601,14 @@ tbody tr:hover {
 }
 
 .admin-tabs button:hover {
-  background: #f8fafc;
+  background: var(--color-bg-gray);
   color: var(--color-text-dark);
   transform: none;
 }
 
 .admin-tabs button.active {
   background: rgba(79, 70, 229, 0.08);
-  color: var(--color-brand-accent);
+  color: var(--color-text-accent);
   font-weight: 700;
 }
 
@@ -629,7 +674,7 @@ tbody tr:hover {
   justify-content: center;
   font-weight: 700;
   font-size: 15px;
-  color: var(--color-brand-accent);
+  color: var(--color-text-accent);
   background: rgba(79, 70, 229, 0.08);
   transition: transform 0.2s ease;
 }
@@ -717,7 +762,7 @@ tbody tr:hover {
 }
 
 .modal-container {
-  background: white;
+  background: var(--color-surface);
   border-radius: 28px;
   width: 100%;
   max-width: 960px;
@@ -737,7 +782,7 @@ tbody tr:hover {
 
 .modal-right {
   padding: 36px;
-  background: #f8fafc;
+  background: var(--color-bg-gray);
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -789,7 +834,7 @@ tbody tr:hover {
 }
 
 .transfer-card-box {
-  background: white;
+  background: var(--color-surface);
   border: 1.5px solid var(--color-border);
   border-radius: 16px;
   padding: 20px;
@@ -815,7 +860,7 @@ tbody tr:hover {
 
 .search-box-wrap input {
   padding-left: 16px;
-  background: #f1f5f9;
+  background: #111111;
   border-color: transparent;
   border-radius: 9999px;
   min-height: 40px;
@@ -823,8 +868,8 @@ tbody tr:hover {
 }
 
 .search-box-wrap input:focus {
-  background: white;
-  border-color: var(--color-brand-accent);
+  background: var(--color-surface);
+  border-color: var(--color-text-accent);
 }
 
 /* ============================================================
@@ -836,23 +881,14 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+  background: var(--login-background);
   padding: 24px;
   position: relative;
   overflow: hidden;
 }
 
 .login-page::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle at 30% 40%, rgba(79, 70, 229, 0.15), transparent 50%),
-              radial-gradient(circle at 70% 60%, rgba(16, 185, 129, 0.1), transparent 50%);
-  pointer-events: none;
-  animation: slowPulse 8s ease-in-out infinite alternate;
+  display: none;
 }
 
 @keyframes slowPulse {
@@ -861,7 +897,7 @@ tbody tr:hover {
 }
 
 .login-panel {
-  background: white;
+  background: var(--color-surface);
   border-radius: 28px;
   padding: 40px;
   width: 100%;
@@ -893,7 +929,7 @@ tbody tr:hover {
 }
 
 .metric {
-  background: white;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 18px;
   padding: 22px;
@@ -995,7 +1031,7 @@ tbody tr:hover {
 
 .progress-track {
   height: 8px;
-  background: #f1f5f9;
+  background: #111111;
   border-radius: 9999px;
   overflow: hidden;
   position: relative;
@@ -1099,7 +1135,7 @@ tbody tr:hover {
 
 .station-row div {
   height: 10px;
-  background: #f1f5f9;
+  background: #111111;
   border-radius: 9999px;
   overflow: hidden;
 }
@@ -1247,7 +1283,7 @@ tbody tr:hover {
 
 .horizontal-bar-row div {
   height: 10px;
-  background: #f1f5f9;
+  background: #111111;
   border-radius: 9999px;
   overflow: hidden;
 }
@@ -1290,7 +1326,7 @@ tbody tr:hover {
 }
 
 .breakdown-card {
-  background: #f8fafc;
+  background: var(--color-bg-gray);
   border: 1px solid var(--color-border);
   border-radius: 16px;
   padding: 20px;
@@ -1320,7 +1356,7 @@ tbody tr:hover {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  background: #f8fafc;
+  background: var(--color-bg-gray);
   border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 16px 20px;
@@ -1333,7 +1369,7 @@ tbody tr:hover {
 }
 
 .field-item:hover {
-  background: white;
+  background: var(--color-surface);
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
   border-color: rgba(79, 70, 229, 0.2);
 }
@@ -1387,7 +1423,7 @@ tbody tr:hover {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  background: #f8fafc;
+  background: var(--color-bg-gray);
   border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 16px 20px;
@@ -1400,7 +1436,7 @@ tbody tr:hover {
 }
 
 .user-item:hover {
-  background: white;
+  background: var(--color-surface);
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
   border-color: rgba(79, 70, 229, 0.2);
 }
@@ -1448,7 +1484,7 @@ tbody tr:hover {
   border-radius: 9999px;
   font-size: 12px;
   font-weight: 600;
-  background: #f1f5f9 !important;
+  background: #111111 !important;
   color: var(--color-text-muted) !important;
   border: 1.5px solid var(--color-border) !important;
   box-shadow: none !important;
@@ -1464,8 +1500,8 @@ tbody tr:hover {
 
 .scope-chip.active {
   background: rgba(79, 70, 229, 0.08) !important;
-  color: var(--color-brand-accent) !important;
-  border-color: var(--color-brand-accent) !important;
+  color: var(--color-text-accent);
+  border-color: var(--color-text-accent);
 }
 
 .scope-row {
@@ -1485,7 +1521,7 @@ tbody tr:hover {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   background: rgba(79, 70, 229, 0.08);
-  color: var(--color-brand-accent);
+  color: var(--color-text-accent);
 }
 
 .field-caption {
@@ -1502,19 +1538,36 @@ tbody tr:hover {
    ============================================================ */
 
 .checkbox-field {
-  display: flex !important;
+  display: inline-flex !important;
   flex-direction: row !important;
   align-items: center;
   gap: 10px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
+  color: var(--color-text-dark);
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: 12px;
+  padding: 10px 16px;
+  transition: all 0.2s ease;
+}
+
+.checkbox-field:hover {
+  background: #111111;
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.checkbox-field:has(input:checked) {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: var(--color-text-accent);
   color: var(--color-text-dark);
 }
 
 .checkbox-field input[type="checkbox"] {
   width: 18px;
   height: 18px;
+  accent-color: var(--color-text-accent);
 }
 
 /* ============================================================
@@ -1554,7 +1607,7 @@ tbody tr:hover {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  color: #475569;
+  color: var(--color-text-dark);
   text-align: center;
 }
 
@@ -1927,7 +1980,7 @@ tbody tr:hover {
   }
 
   .table-wrap tr {
-    background: white;
+    background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: 16px;
     margin-bottom: 16px;

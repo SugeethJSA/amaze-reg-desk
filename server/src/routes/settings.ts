@@ -8,8 +8,16 @@ export const settingsRouter = Router();
 settingsRouter.get("/public", async (req, res, next) => {
   try {
     const result = await pool.query(
-      "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ($1, $2, $3, $4, $5, $6, $7, $8)",
-      ["app_name", "logo_url", "primary_color", "event_name", "public_registrations_enabled", "public_transfers_enabled", "volunteer_onspot_enabled", "admin_onspot_enabled"]
+      "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)",
+      [
+        "app_name", "logo_url", "primary_color", "event_name", 
+        "public_registrations_enabled", "public_transfers_enabled", 
+        "volunteer_onspot_enabled", "admin_onspot_enabled",
+        "enable_email_login", "font_family_main", "font_family_heading",
+        "color_surface", "color_bg_gray", "color_border", 
+        "color_text_dark", "color_text_muted", "color_brand_accent", "color_text_accent",
+        "color_nav_bg", "color_nav_text", "color_secondary_btn", "color_secondary_btn_text", "login_background", "require_payment_proof"
+      ]
     );
     const settings = result.rows.reduce((acc, row) => {
       acc[row.setting_key] = row.setting_value;
