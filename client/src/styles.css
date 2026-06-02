@@ -1805,6 +1805,36 @@ tbody tr:hover {
   .field-list {
     grid-template-columns: minmax(0, 1fr);
   }
+  
+  /* Thumb-Zone Sticky Action Bar */
+  .section-title .row {
+    position: fixed;
+    bottom: 80px;
+    left: 16px;
+    right: 16px;
+    margin: 0;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    z-index: 80;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    justify-content: flex-start;
+  }
+  
+  .section-title .row .search-box-wrap {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .section-title .row button {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
 
   /* Optimize action buttons on cards by hiding text and making them icon-only */
   .user-item .row button,
@@ -1863,15 +1893,6 @@ tbody tr:hover {
     display: none;
   }
   
-  .table-wrap tr {
-    background: white;
-    border: 1px solid var(--color-border);
-    border-radius: 12px;
-    margin-bottom: 16px;
-    padding: 16px;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
-  }
-  
   .table-wrap td {
     border: none;
     padding: 8px 0;
@@ -1888,7 +1909,7 @@ tbody tr:hover {
     font-size: 11px;
     text-transform: uppercase;
     font-weight: 700;
-    color: #94a3b8;
+    color: #64748b;
     margin-bottom: 2px;
   }
 
@@ -1904,13 +1925,32 @@ tbody tr:hover {
     margin-bottom: 8px;
     border-bottom: 1px solid var(--color-border);
   }
+
+  .table-wrap tr {
+    background: white;
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    margin-bottom: 16px;
+    padding: 16px;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+    position: relative;
+    padding-bottom: 24px;
+  }
   
   .table-wrap td:last-child {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
     flex-direction: row;
     justify-content: flex-end;
     align-items: center;
-    width: 100%;
-    margin-top: 8px;
+    width: auto;
+    margin-top: 0;
+    padding: 0;
+  }
+  
+  .table-wrap td .row {
+    margin-top: 0 !important;
   }
   
   .table-wrap td.empty-cell {
@@ -1919,6 +1959,40 @@ tbody tr:hover {
   
   .attendee-card .empty-data {
     display: none !important;
+  }
+
+  /* Bottom Sheet Modals for One-Handed Operation (Mobile Only) */
+  @media (max-width: 768px) {
+    .modal-backdrop.bottom-sheet {
+      align-items: flex-end;
+      padding: 0;
+    }
+    
+    .modal-backdrop.bottom-sheet > div {
+      width: 100% !important;
+      max-width: 100% !important;
+      border-radius: 24px 24px 0 0 !important;
+      margin: 0 !important;
+      animation: slideUpSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      max-height: 90vh !important;
+      padding-bottom: env(safe-area-inset-bottom, 24px) !important;
+    }
+    
+    @keyframes slideUpSheet {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    
+    /* Drag handle for bottom sheet */
+    .modal-backdrop.bottom-sheet > div::before {
+      content: '';
+      display: block;
+      width: 40px;
+      height: 4px;
+      background: #cbd5e1;
+      border-radius: 4px;
+      margin: 0 auto 16px auto;
+    }
   }
 
   .top-nav {

@@ -133,6 +133,17 @@ export function App() {
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   useEffect(() => {
+    // Trap the back button to prevent accidental app exit on mobile
+    window.history.pushState({ app: "amaze-reg-desk" }, "");
+    const handlePop = () => {
+      window.history.pushState({ app: "amaze-reg-desk" }, "");
+      window.dispatchEvent(new CustomEvent('app-back-gesture'));
+    };
+    window.addEventListener("popstate", handlePop);
+    return () => window.removeEventListener("popstate", handlePop);
+  }, []);
+
+  useEffect(() => {
     if (session && session.user.role !== "admin" && view !== "scanner" && view !== "account") {
       setView("scanner");
     }
@@ -636,6 +647,8 @@ function Admin({ globalSettings }: { globalSettings: Record<string, string> }) {
   const [file, setFile] = useState<File | null>(null);
   const [message, setMessage] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+
+
   const [attendees, setAttendees] = useState<any[]>([]);
   const [fields, setFields] = useState<FormField[]>([]);
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
@@ -665,6 +678,18 @@ function Admin({ globalSettings }: { globalSettings: Record<string, string> }) {
 
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [categoryForm, setCategoryForm] = useState({ name: "", description: "", color: "#6366f1", active: true, stationPermissions: "", capabilities: {} as Record<string, boolean> });
+
+  useEffect(() => {
+    const handleBack = () => {
+      if (menuOpen) setMenuOpen(false);
+      else if (editingFieldId) setEditingFieldId(null);
+      else if (editingUserId) setEditingUserId(null);
+      else if (editingCategoryId) setEditingCategoryId(null);
+      else if (editingRuleId) setEditingRuleId(null);
+    };
+    window.addEventListener('app-back-gesture', handleBack);
+    return () => window.removeEventListener('app-back-gesture', handleBack);
+  }, [menuOpen, editingFieldId, editingUserId, editingCategoryId, editingRuleId]);
 
   async function loadAttendees() {
     try {
@@ -1294,7 +1319,7 @@ function Admin({ globalSettings }: { globalSettings: Record<string, string> }) {
                               {r.starts_at ? new Date(r.starts_at).toLocaleString() : "Start"} — {r.ends_at ? new Date(r.ends_at).toLocaleString() : "End"}
                             </span>
                           </td>
-                          <td data-label="Status"><span className="badge" style={{ background: r.active ? "#10b981" : "#ef4444" }}>{r.active ? "Active" : "Inactive"}</span></td>
+                          <td data-label="Status"><span className={`status-badge ${r.active ? "verified" : "inactive"}`}>{r.active ? "Active" : "Inactive"}</span></td>
                           <td data-label="Actions">
                             <div className="row">
                               <button className="icon-button" onClick={() => editRule(r)} title="Edit"><Edit3 size={16} /></button>
@@ -1313,6 +1338,13 @@ function Admin({ globalSettings }: { globalSettings: Record<string, string> }) {
       )}
 
       {tab === "categories" && (
+          categories.length === 0 ? (
+            <div className="empty-state">
+              <ShieldCheck size={48} className="muted" />
+              <h3>No categories created</h3>
+              <p className="muted">Create categories to manage volunteer permissions</p>
+            </div>
+          ) : (
             <div className="admin-grid">
               <form className="panel" onSubmit={saveCategory}>
                 <div className="panel-header">
@@ -1380,6 +1412,7 @@ function Admin({ globalSettings }: { globalSettings: Record<string, string> }) {
                 </div>
               </div>
             </div>
+          )
       )}
 
       {tab === "users" && (
@@ -1861,6 +1894,14 @@ function VerificationQueue({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    const handleBack = () => {
+      if (selectedAttendee) setSelectedAttendee(null);
+    };
+    window.addEventListener('app-back-gesture', handleBack);
+    return () => window.removeEventListener('app-back-gesture', handleBack);
+  }, [selectedAttendee]);
+
   const pendingAttendees = useMemo(() => {
     return attendees.filter((a) => a.metadata?.verificationStatus === "pending");
   }, [attendees]);
@@ -1932,7 +1973,7 @@ function VerificationQueue({
       )}
 
       {selectedAttendee && (
-        <div className="modal-backdrop" style={{ display: "flex" }}>
+        <div className="modal-backdrop bottom-sheet" style={{ display: "flex" }}>
           <div className="login-panel" style={{ maxWidth: "680px", width: "90%", maxHeight: "90vh", overflowY: "auto", textAlign: "left" }}>
             <div className="panel-header" style={{ marginBottom: "20px" }}>
               <h3>Review Pending Submission</h3>
@@ -1985,6 +2026,14 @@ function VolunteerWorkstation({ session, globalSettings }: { session: Session; g
   const [attendees, setAttendees] = useState<any[]>([]);
   const [message, setMessage] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleBack = () => {
+      if (menuOpen) setMenuOpen(false);
+    };
+    window.addEventListener('app-back-gesture', handleBack);
+    return () => window.removeEventListener('app-back-gesture', handleBack);
+  }, [menuOpen]);
 
   async function loadFields() {
     try {
@@ -2056,6 +2105,14 @@ function AttendeeDatabase({
   const [isTransferMode, setIsTransferMode] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const handleBack = () => {
+      if (editingAttendee) setEditingAttendee(null);
+    };
+    window.addEventListener('app-back-gesture', handleBack);
+    return () => window.removeEventListener('app-back-gesture', handleBack);
+  }, [editingAttendee]);
 
   const listColumns = useMemo(() => {
     if (fields.length === 0) {
@@ -2234,7 +2291,7 @@ function AttendeeDatabase({
         <div className="row">
           <div className="search-box-wrap">
             <input
-              type="text"
+              type="search"
               placeholder="Find by Name, Email, or Booking ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -2302,7 +2359,7 @@ function AttendeeDatabase({
 
       {/* High-Fidelity Edit Details and Ticket Transfer Wizard Modal Backdrop (screenshot 3) */}
       {editingAttendee && (
-        <div className="modal-backdrop">
+        <div className="modal-backdrop bottom-sheet">
           <div className="modal-container">
             <div className="modal-left">
               <div className="modal-title-area">
