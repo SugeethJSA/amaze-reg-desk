@@ -185,8 +185,9 @@ attendeesRouter.put("/:id", requireAuth, async (req, res, next) => {
 
 attendeesRouter.post("/public-register", publicFormLimiter, async (req, res, next) => {
   try {
-    const settingsRes = await pool.query("SELECT setting_value FROM system_settings WHERE setting_key = 'all_registrations_enabled'");
-    if (settingsRes.rows[0]?.setting_value === "false") {
+    const settingsRes = await pool.query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('all_registrations_enabled', 'require_payment_proof')");
+    const settings = settingsRes.rows.reduce((acc, row) => ({ ...acc, [row.setting_key]: row.setting_value }), {} as Record<string, string>);
+    if (settings.all_registrations_enabled === "false") {
       return res.status(403).json({ error: "forbidden", message: "Registrations are currently disabled." });
     }
 
@@ -205,7 +206,7 @@ attendeesRouter.post("/public-register", publicFormLimiter, async (req, res, nex
         input.college,
         input.department,
         JSON.stringify({
-          verificationStatus: "pending",
+          verificationStatus: settings.require_payment_proof === "false" ? "verified" : "pending",
           paymentProof,
           customFields: input.customFields
         })
@@ -219,8 +220,9 @@ attendeesRouter.post("/public-register", publicFormLimiter, async (req, res, nex
 
 attendeesRouter.post("/public-transfer", publicFormLimiter, async (req, res, next) => {
   try {
-    const settingsRes = await pool.query("SELECT setting_value FROM system_settings WHERE setting_key = 'all_registrations_enabled'");
-    if (settingsRes.rows[0]?.setting_value === "false") {
+    const settingsRes = await pool.query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('all_registrations_enabled', 'require_payment_proof')");
+    const settings = settingsRes.rows.reduce((acc, row) => ({ ...acc, [row.setting_key]: row.setting_value }), {} as Record<string, string>);
+    if (settings.all_registrations_enabled === "false") {
       return res.status(403).json({ error: "forbidden", message: "Transfers are currently disabled." });
     }
 
@@ -249,26 +251,39 @@ attendeesRouter.post("/public-transfer", publicFormLimiter, async (req, res, nex
       return res.status(400).json({ error: "pending_transfer", message: "A transfer request is already pending for this ticket." });
     }
 
-    const result = await pool.query(
-      `INSERT INTO attendees (name, email, phone, college, department, metadata, registered_on_spot)
-       VALUES ($1, $2, $3, $4, $5, $6, FALSE)
-       RETURNING *`,
-      [
-        parsedRecipient.name,
-        parsedRecipient.email.toLowerCase(),
-        parsedRecipient.phone,
-        parsedRecipient.college,
-        parsedRecipient.department,
-        JSON.stringify({
-          verificationStatus: "pending",
-          paymentProof,
-          transferredFrom: originalAttendeeId,
-          customFields: parsedRecipient.customFields
-        })
-      ]
-    );
+    const result = await withTransaction(async (client) => {
+      const recipientRes = await client.query(
+        `INSERT INTO attendees (name, email, phone, college, department, metadata, registered_on_spot)
+         VALUES ($1, $2, $3, $4, $5, $6, FALSE)
+         RETURNING *`,
+        [
+          parsedRecipient.name,
+          parsedRecipient.email.toLowerCase(),
+          parsedRecipient.phone,
+          parsedRecipient.college,
+          parsedRecipient.department,
+          JSON.stringify({
+            verificationStatus: settings.require_payment_proof === "false" ? "verified" : "pending",
+            paymentProof,
+            transferredFrom: originalAttendeeId,
+            customFields: parsedRecipient.customFields
+          })
+        ]
+      );
+      
+      const newAttendee = recipientRes.rows[0];
+      
+      if (settings.require_payment_proof === "false") {
+        originalMeta.status = "transferred";
+        originalMeta.transferredTo = newAttendee.id;
+        originalMeta.verificationStatus = "transferred";
+        await client.query("UPDATE attendees SET metadata = $2, updated_at = now() WHERE id = $1", [originalAttendeeId, JSON.stringify(originalMeta)]);
+        await client.query("DELETE FROM qr_codes WHERE attendee_id = $1", [originalAttendeeId]);
+      }
+      return newAttendee;
+    });
 
-    return res.status(201).json({ recipientAttendee: result.rows[0] });
+    return res.status(201).json({ recipientAttendee: result });
   } catch (error) {
     return next(error);
   }
