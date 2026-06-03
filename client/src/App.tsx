@@ -2507,9 +2507,28 @@ function Scanner({ session }: { session: Session }) {
   const [decoded, setDecoded] = useState<Record<string, unknown> | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState("");
+  const [cameras, setCameras] = useState<{ id: string; label: string }[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<string>("");
   const scannerRef = useRef<Html5Qrcode | null>(null);
 
-  async function startCamera() {
+  async function fetchCameras() {
+    try {
+      const devices = await Html5Qrcode.getCameras();
+      if (devices && devices.length > 0) {
+        setCameras(devices);
+        if (!selectedCameraId) setSelectedCameraId(devices[0].id);
+      }
+    } catch (err) {
+      console.warn("Could not fetch cameras", err);
+    }
+  }
+
+  useEffect(() => {
+    fetchCameras();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function startCamera(overrideDeviceId?: string) {
     setCameraError("");
     try {
       if (!scannerRef.current) {
@@ -2521,22 +2540,38 @@ function Scanner({ session }: { session: Session }) {
         setResult("QR captured. Review and record the scan.");
       };
 
+      const targetId = overrideDeviceId || selectedCameraId;
+
       try {
-        // Try to open the rear camera first
-        await scannerRef.current.start({ facingMode: "environment" }, config, onScan, () => undefined);
+        if (targetId) {
+          await scannerRef.current.start(targetId, config, onScan, () => undefined);
+        } else {
+          await scannerRef.current.start({ facingMode: "environment" }, config, onScan, () => undefined);
+        }
       } catch (err) {
         // If it fails (e.g. laptop has no rear camera), fallback to the first available camera
         const devices = await Html5Qrcode.getCameras();
         if (devices && devices.length > 0) {
           await scannerRef.current.start(devices[0].id, config, onScan, () => undefined);
+          setSelectedCameraId(devices[0].id);
         } else {
           throw err;
         }
       }
       setCameraActive(true);
+      fetchCameras(); // Update labels after permissions are granted
     } catch (error) {
       setCameraError(error instanceof Error ? error.message : "Camera could not start. Please check permissions.");
       setCameraActive(false);
+    }
+  }
+
+  async function handleCameraChange(event: React.ChangeEvent<HTMLSelectElement>) {
+    const newId = event.target.value;
+    setSelectedCameraId(newId);
+    if (cameraActive) {
+      await stopCamera();
+      await startCamera(newId);
     }
   }
 
@@ -2611,9 +2646,18 @@ function Scanner({ session }: { session: Session }) {
         <div className="panel scanner-panel">
           <div className="panel-header">
             <h3>Camera</h3>
-            <button className={cameraActive ? "secondary" : ""} onClick={cameraActive ? stopCamera : startCamera}>
-              {cameraActive ? <CameraOff size={16} /> : <Camera size={16} />} {cameraActive ? "Stop camera" : "Start camera"}
-            </button>
+            <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
+              {cameras.length > 0 && (
+                <select value={selectedCameraId} onChange={handleCameraChange} style={{ maxWidth: "200px" }}>
+                  {cameras.map((cam) => (
+                    <option key={cam.id} value={cam.id}>{cam.label || `Camera ${cam.id.substring(0, 5)}`}</option>
+                  ))}
+                </select>
+              )}
+              <button className={cameraActive ? "secondary" : ""} onClick={() => (cameraActive ? stopCamera() : startCamera())}>
+                {cameraActive ? <CameraOff size={16} /> : <Camera size={16} />} {cameraActive ? "Stop" : "Start"}
+              </button>
+            </div>
           </div>
           <div className="qr-container" style={{ position: "relative", width: "100%", aspectRatio: "1", borderRadius: "16px", overflow: "hidden", background: "#0f172a" }}>
             <div id="qr-reader" className={cameraActive ? "qr-reader active" : "qr-reader"} style={{ width: "100%", height: "100%", position: "absolute", inset: 0, opacity: cameraActive ? 1 : 0, zIndex: cameraActive ? 10 : -1 }}></div>
